@@ -6,6 +6,12 @@ Read_Master is an online e-book library system that gives readers a simple place
 
 The system is designed to make digital reading materials easier to access while ensuring that published resources have an appropriate licence or permission for distribution.
 
+## Demo Data Disclaimer
+
+All book records, catalogue details, users, statistics, and related content included in this project are sample data provided only to demonstrate how the system works. They should not be treated as a real production library catalogue.
+
+Real books must not be uploaded, copied, or distributed unless they are in the public domain, covered by a suitable open licence, owned by the publisher, or shared with explicit permission from the copyright holder. Anyone deploying this project is responsible for verifying the source, copyright status, licence terms, and distribution rights of every resource before publishing it.
+
 ## System Objectives
 
 - Provide convenient access to free digital books and learning resources.

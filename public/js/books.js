@@ -19,6 +19,8 @@ const state = {
 const bookGrid = $("#bookGrid");
 const emptyState = $("#emptyState");
 const searchInput = $("#searchInput");
+const searchSuggestions = $("#searchSuggestions");
+const clearSearchButton = $("#clearSearchButton");
 const categoryButtons = $("#categoryButtons");
 const formatSelect = $("#formatSelect");
 const sortSelect = $("#sortSelect");
@@ -38,6 +40,7 @@ let trendTimer = null;
 let trendSliding = false;
 let eventsBound = false;
 let activeModalBookId = "";
+let activeSuggestionIndex = -1;
 
 function allCatalogBooks() {
   return [...state.books, ...state.upcomingBooks];
@@ -78,6 +81,97 @@ function matchingBooks() {
       if (state.sort === "author") return a.author.localeCompare(b.author);
       return String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
     });
+}
+
+function suggestedBooks() {
+  const term = state.search.trim().toLowerCase();
+  if (!term) return [];
+
+  return activeCatalogBooks()
+    .filter((book) => {
+      const searchMatch = [book.title, book.author, book.category, book.description]
+        .some((value) => String(value || "").toLowerCase().includes(term));
+      const categoryMatch = state.category === "All" || book.category === state.category;
+      const formatMatch = state.format === "All" || book.format === state.format;
+      return searchMatch && categoryMatch && formatMatch;
+    })
+    .sort((a, b) => {
+      const aTitle = a.title.toLowerCase();
+      const bTitle = b.title.toLowerCase();
+      const aStarts = aTitle.startsWith(term) ? 0 : 1;
+      const bStarts = bTitle.startsWith(term) ? 0 : 1;
+      return aStarts - bStarts || aTitle.localeCompare(bTitle);
+    })
+    .slice(0, 6);
+}
+
+function closeSearchSuggestions() {
+  if (!searchSuggestions) return;
+  activeSuggestionIndex = -1;
+  searchSuggestions.hidden = true;
+  searchInput.setAttribute("aria-expanded", "false");
+  searchInput.removeAttribute("aria-activedescendant");
+}
+
+function setActiveSuggestion(index) {
+  const options = [...searchSuggestions.querySelectorAll("[data-search-suggestion]")];
+  if (!options.length) return;
+
+  activeSuggestionIndex = (index + options.length) % options.length;
+  options.forEach((option, optionIndex) => {
+    const active = optionIndex === activeSuggestionIndex;
+    option.classList.toggle("active", active);
+    option.setAttribute("aria-selected", String(active));
+  });
+  searchInput.setAttribute("aria-activedescendant", options[activeSuggestionIndex].id);
+  options[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
+}
+
+function renderSearchSuggestions() {
+  if (!searchSuggestions) return;
+
+  const term = state.search.trim();
+  const suggestions = suggestedBooks();
+  clearSearchButton.hidden = !term;
+  activeSuggestionIndex = -1;
+  searchInput.removeAttribute("aria-activedescendant");
+
+  if (!term || !suggestions.length || document.activeElement !== searchInput) {
+    closeSearchSuggestions();
+    return;
+  }
+
+  searchSuggestions.innerHTML = suggestions.map((book, index) => `
+    <button
+      id="searchSuggestion${index}"
+      class="search-suggestion"
+      type="button"
+      role="option"
+      aria-selected="false"
+      data-search-suggestion="${escapeAttribute(book.title)}"
+    >
+      <strong>${escapeHtml(book.title)}</strong>
+      <span>${escapeHtml(book.author)} · ${escapeHtml(book.category)}</span>
+    </button>
+  `).join("");
+  searchSuggestions.hidden = false;
+  searchInput.setAttribute("aria-expanded", "true");
+}
+
+function applySearch(searchTerm, { focus = false, resetFilters = false } = {}) {
+  if (resetFilters) {
+    state.category = "All";
+    state.format = "All";
+    if (state.sort === "coming-soon") state.sort = "newest";
+    sortSelect.value = state.sort;
+    renderFilters();
+  }
+  state.search = searchTerm;
+  searchInput.value = searchTerm;
+  clearSearchButton.hidden = !searchTerm;
+  closeSearchSuggestions();
+  renderBooks();
+  if (focus) searchInput.focus();
 }
 
 function detailUrl(book) {
@@ -431,7 +525,9 @@ function renderFilters() {
 function renderBooks() {
   const books = matchingBooks();
   const sourceBooks = activeCatalogBooks();
-  catalogTitle.textContent = state.sort === "coming-soon" ? "Coming soon books" : "Available books";
+  catalogTitle.textContent = state.search.trim()
+    ? `Results for “${state.search.trim()}”`
+    : state.sort === "coming-soon" ? "Coming soon books" : "Available books";
   totalCount.textContent = sourceBooks.length;
   visibleCount.textContent = books.length;
   savedCount.textContent = getSavedIds().length;
@@ -448,6 +544,45 @@ function bindEvents() {
   searchInput.addEventListener("input", (event) => {
     state.search = event.target.value;
     renderBooks();
+    renderSearchSuggestions();
+  });
+
+  searchInput.addEventListener("focus", renderSearchSuggestions);
+
+  searchInput.addEventListener("keydown", (event) => {
+    const options = [...searchSuggestions.querySelectorAll("[data-search-suggestion]")];
+
+    if (event.key === "ArrowDown" && options.length) {
+      event.preventDefault();
+      setActiveSuggestion(activeSuggestionIndex + 1);
+    } else if (event.key === "ArrowUp" && options.length) {
+      event.preventDefault();
+      setActiveSuggestion(activeSuggestionIndex - 1);
+    } else if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      applySearch(options[activeSuggestionIndex].dataset.searchSuggestion);
+    } else if (event.key === "Escape") {
+      closeSearchSuggestions();
+    }
+  });
+
+  clearSearchButton.addEventListener("click", () => applySearch("", { focus: true }));
+
+  document.addEventListener("click", (event) => {
+    const suggestion = event.target.closest("[data-search-suggestion]");
+    if (suggestion) {
+      applySearch(suggestion.dataset.searchSuggestion);
+      return;
+    }
+
+    const keyword = event.target.closest("[data-search-keyword]");
+    if (keyword) {
+      applySearch(keyword.dataset.searchKeyword, { resetFilters: true });
+      document.querySelector("#libraryShelf")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    if (!event.target.closest(".search-field")) closeSearchSuggestions();
   });
 
   categoryButtons.addEventListener("click", (event) => {

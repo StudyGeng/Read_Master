@@ -660,6 +660,112 @@ textarea {
   line-height: 1.45;
 }
 
+.search-input-wrap {
+  position: relative;
+}
+
+.search-input-wrap input {
+  padding-right: 42px;
+}
+
+.clear-search-button {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  right: 7px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.clear-search-button:hover,
+.clear-search-button:focus-visible {
+  background: var(--surface-soft);
+  color: var(--green-900);
+}
+
+.search-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid var(--green-200);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(18, 61, 42, 0.16);
+}
+
+.search-suggestion {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.search-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.search-suggestion:hover,
+.search-suggestion.active {
+  background: var(--surface-soft);
+}
+
+.search-suggestion span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.keyword-search {
+  display: grid;
+  gap: 7px;
+}
+
+.keyword-search > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.keyword-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keyword-buttons button {
+  min-height: 30px;
+  border: 1px solid var(--green-200);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--green-900);
+  cursor: pointer;
+  padding: 5px 9px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.keyword-buttons button:hover,
+.keyword-buttons button:focus-visible {
+  border-color: var(--green-700);
+  background: #ffffff;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -1286,6 +1392,27 @@ textarea:focus {
   color: var(--muted);
   font-weight: 700;
   box-shadow: 0 14px 34px rgba(18, 61, 42, 0.07);
+}
+
+.site-footer.simplified-footer {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .site-footer.simplified-footer {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .simplified-footer .footer-brand {
+    justify-content: center;
+  }
+
+  .simplified-footer .footer-note {
+    justify-items: center;
+    text-align: center;
+  }
 }
 
 .footer-brand {
