@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1040" viewBox="0 0 720 1040" role="img" aria-label="The Wonderful Wizard of Oz cover">
+  <defs>
+    <linearGradient id="cover-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5a7d3d"/>
+      <stop offset="52%" stop-color="#f5b84b"/>
+      <stop offset="100%" stop-color="#f7e0a4"/>
+    </linearGradient>
+    <radialGradient id="cover-glow" cx="78%" cy="18%" r="68%">
+      <stop offset="0%" stop-color="#fff6d8" stop-opacity="0.44"/>
+      <stop offset="100%" stop-color="#fff6d8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.08"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b2d1d" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-bg)"/>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-glow)"/>
+  <rect width="720" height="1040" rx="22" filter="url(#paper)" opacity="0.52"/>
+  <rect x="34" y="34" width="652" height="972" rx="18" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3"/>
+  <path d="M0 0h62v1040H0z" fill="#071d14" opacity="0.26"/>
+  <path d="M62 0h12v1040H62z" fill="#ffffff" opacity="0.2"/>
+  <path d="M0 806 C172 742 276 824 438 758 C562 708 650 724 720 672 V1040 H0 Z" fill="#253d21" opacity="0.18"/>
+  <g filter="url(#soft-shadow)">
+    
+      
+    <rect x="76" y="360" width="568" height="454" rx="18" fill="#fff6d8" opacity="0.88"/>
+    <rect x="98" y="382" width="524" height="410" rx="12" fill="none" stroke="#253d21" stroke-opacity="0.16" stroke-width="3"/>
+  
+      <circle cx="360" cy="602" r="150" fill="#f7e0a4" opacity="0.94"/>
+      <path d="M266 534c42-72 110-88 170-38c60 50 66 136 10 204c-48 60-138 76-202 24c-58-46-60-124 22-190z" fill="#f7e0a4"/>
+      <path d="M430 414 C494 356 580 382 606 456 C532 476 468 464 430 414Z" fill="#5a7d3d" opacity="0.72"/>
+      <path d="M454 438 C418 500 396 556 376 638" stroke="#253d21" stroke-width="10" stroke-linecap="round" opacity="0.32"/>
+      <path d="M154 748 C236 688 304 714 384 672 C454 634 528 648 594 602" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" opacity="0.7"/>
+    
+  </g>
+  
+    <g font-family="Georgia, 'Times New Roman', serif">
+      <rect x="66" y="58" width="588" height="306" rx="14" fill="#fff6d8" opacity="0.94"/>
+      <rect x="88" y="82" width="544" height="258" rx="8" fill="none" stroke="#5a7d3d" stroke-opacity="0.22" stroke-width="3"/>
+      <text x="106" y="124" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="900" letter-spacing="2" fill="#f5b84b">Literature</text>
+      <text x="106" y="184" font-size="62" font-weight="900" fill="#253d21">The Wonderful</text>
+<text x="106" y="244.76" font-size="62" font-weight="900" fill="#253d21">Wizard of Oz</text>
+      <text x="106" y="304.24" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="800" fill="#5a7d3d" opacity="0.82">A public domain children&#39;s classic following...</text>
+      <text x="94" y="934" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="900" fill="#253d21">L. Frank Baum</text>
+      
+      <text x="626" y="958" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="900" fill="#253d21" opacity="0.7">READ_MASTER</text>
+    </g>
+  
+  
+</svg>

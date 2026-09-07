@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function adminPath(uid) {
+      return /databases/$(database)/documents/admins/$(uid);
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(adminPath(request.auth.uid))
+        && get(adminPath(request.auth.uid)).data.active == true;
+    }
+
+    match /admins/{adminId} {
+      allow get: if signedIn() && request.auth.uid == adminId;
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == "user";
+      allow get, update, delete: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+
+      match /savedBooks/{savedBookId} {
+        allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    match /books/{bookId} {
+      allow get, list: if (
+          resource.data.licenseChecked == true
+          && resource.data.licenseType in [
+            "Public Domain",
+            "Creative Commons",
+            "Open Educational Resource",
+            "Open Documentation",
+            "Open Resource",
+            "School-owned",
+            "Author-approved"
+          ]
+          && (
+            resource.data.status == "published"
+            || resource.data.status == "upcoming"
+          )
+        )
+        || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Book | Read_Master Library</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <link rel="stylesheet" href="../css/admin.css?v=form-motion-1">
+</head>
+<body class="admin-page" data-admin-page="edit-book">
+  <header class="admin-header">
+    <a class="brand" href="dashboard.html" aria-label="Read_Master admin dashboard">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>Admin</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="Admin navigation">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="add-book.html">Add Book</a>
+      <button class="nav-button" type="button" data-logout>Logout</button>
+    </nav>
+  </header>
+
+  <main class="admin-main form-main">
+    <a class="back-link" href="dashboard.html">Back to dashboard</a>
+
+    <section class="form-layout admin-form-layout">
+      <div class="page-heading">
+        <p class="eyebrow">Book record</p>
+        <h1 data-form-title>Edit book</h1>
+        <p>Update book details, status, files, and resource links.</p>
+      </div>
+
+      <form class="data-form" data-book-form>
+        <p class="system-note" data-config-notice hidden></p>
+        <p class="form-message" id="bookFormMessage" hidden></p>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Title</span>
+            <input name="title" type="text" required maxlength="140">
+          </label>
+
+          <label class="field">
+            <span>Author</span>
+            <input name="author" type="text" required maxlength="140">
+          </label>
+
+          <label class="field">
+            <span>Category</span>
+            <select name="category" required>
+              <option value="">Select category</option>
+              <option>Technology</option>
+              <option>Science</option>
+              <option>Literature</option>
+              <option>Business</option>
+              <option>Education</option>
+              <option>Design</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Format</span>
+            <select name="format" required>
+              <option>PDF</option>
+              <option>EPUB</option>
+              <option>Web</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Language</span>
+            <input name="language" type="text" maxlength="60">
+          </label>
+
+          <label class="field">
+            <span>Release date</span>
+            <input name="releaseDate" type="date">
+          </label>
+
+          <label class="field">
+            <span>License type</span>
+            <select name="licenseType" required>
+              <option value="">Select license/source type</option>
+              <option>Public Domain</option>
+              <option>Creative Commons</option>
+              <option>Open Educational Resource</option>
+              <option>Open Documentation</option>
+              <option>Open Resource</option>
+              <option>School-owned</option>
+              <option>Author-approved</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Status</span>
+            <select name="status" required>
+              <option value="published">Published</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="draft">Draft</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="legal-check-panel">
+          <p class="eyebrow">Legal check</p>
+          <p>Only publish resources that are public domain, open-license, school-owned, or author-approved.</p>
+          <label class="check-field">
+            <input name="licenseChecked" type="checkbox" required>
+            <span>I checked the source, license, and usage rights for this resource.</span>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Source name</span>
+          <input name="sourceName" type="text" required maxlength="140">
+        </label>
+
+        <label class="field">
+          <span>Resource URL</span>
+          <input name="resourceUrl" type="url">
+          <small class="field-hint">Use the official source page or an approved file link. Avoid copied paid-book PDFs.</small>
+        </label>
+
+        <label class="field">
+          <span>Cover image URL</span>
+          <input name="coverUrl" type="url">
+        </label>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Replace cover image</span>
+            <input name="coverFile" type="file" accept="image/*">
+          </label>
+
+          <label class="field">
+            <span>Replace PDF or EPUB</span>
+            <input name="resourceFile" type="file" accept=".pdf,.epub,application/pdf,application/epub+zip">
+            <small class="field-hint">Upload only public domain, open-license, school-owned, or author-approved files.</small>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea name="description" rows="6" required maxlength="900"></textarea>
+        </label>
+
+        <div class="action-row split-actions">
+          <div>
+            <button class="btn primary" type="submit">Update Book</button>
+            <a class="btn secondary" href="dashboard.html">Cancel</a>
+          </div>
+          <button class="btn danger" type="button" data-delete-current>Delete Book</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="../js/main.js?v=profile-role-2"></script>
+  <script type="module" src="../js/admin-books.js"></script>
+</body>
+</html>

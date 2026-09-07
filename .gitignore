@@ -1,0 +1,7 @@
+.firebase/
+.firebaserc
+node_modules/
+dist/
+build/
+Book_resources/
+*.log

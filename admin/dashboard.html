@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Read_Master Library</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="admin-page" data-admin-page="dashboard">
+  <header class="admin-header">
+    <a class="brand" href="dashboard.html" aria-label="Read_Master admin dashboard">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>Admin</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="Admin navigation">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="add-book.html">Add Book</a>
+      <button class="nav-button" type="button" data-logout>Logout</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <div class="admin-title-row">
+      <div>
+        <p class="eyebrow">Dashboard</p>
+        <h1>Library management</h1>
+        <p class="admin-user-line">Signed in as <span data-admin-email>admin</span></p>
+      </div>
+      <div class="admin-title-actions">
+        <button class="btn secondary" type="button" data-seed-books>Load Demo Books</button>
+        <a class="btn primary" href="add-book.html">Add New Book</a>
+      </div>
+    </div>
+
+    <p class="system-note" data-config-notice hidden></p>
+    <p class="form-message" id="dashboardMessage" hidden></p>
+
+    <section class="admin-profile-card" aria-label="Admin profile">
+      <div class="profile-avatar">AD</div>
+      <div class="profile-content">
+        <p class="eyebrow">Admin profile</p>
+        <h2 data-admin-name>Read_Master Admin</h2>
+        <p class="profile-email" data-admin-email>admin@example.com</p>
+        <dl class="profile-meta">
+          <div>
+            <dt>Role</dt>
+            <dd data-admin-role>admin</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="admin-stats" aria-label="Admin summary">
+      <article>
+        <span>Total books</span>
+        <strong data-total-books>0</strong>
+      </article>
+      <article>
+        <span>Published</span>
+        <strong data-published-books>0</strong>
+      </article>
+      <article>
+        <span>Upcoming</span>
+        <strong data-upcoming-books>0</strong>
+      </article>
+    </section>
+
+    <section class="dashboard-insights" aria-label="Dashboard charts">
+      <article class="dashboard-card">
+        <div class="chart-heading">
+          <div>
+            <p class="eyebrow">Book status</p>
+            <h2>Catalog chart</h2>
+          </div>
+          <span class="chart-chip">Live demo</span>
+        </div>
+        <div class="bar-chart" id="statusChart">
+          <p class="loading-text">Loading chart...</p>
+        </div>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="chart-heading">
+          <div>
+            <p class="eyebrow">Added time</p>
+            <h2>Books added by month</h2>
+          </div>
+          <span class="chart-chip">Last 6 months</span>
+        </div>
+        <div class="month-chart" id="addedMonthChart">
+          <p class="loading-text">Loading chart...</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="admin-section">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">User control</p>
+          <h2>User accounts</h2>
+        </div>
+        <input class="admin-search" id="adminUserSearch" type="search" placeholder="Search users">
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="adminUsersTableBody">
+            <tr>
+              <td colspan="5">Loading users...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <div class="section-header">
+        <h2>Books</h2>
+        <input class="admin-search" id="adminBookSearch" type="search" placeholder="Search admin books">
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Legal</th>
+              <th>Release</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="adminBooksTableBody">
+            <tr>
+              <td colspan="7">Loading books...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="../js/main.js?v=profile-role-2"></script>
+  <script type="module" src="../js/admin-books.js?v=dashboard-local-1"></script>
+</body>
+</html>

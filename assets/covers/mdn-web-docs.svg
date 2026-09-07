@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1040" viewBox="0 0 720 1040" role="img" aria-label="Web Development Guides cover">
+  <defs>
+    <linearGradient id="cover-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#102a43"/>
+      <stop offset="52%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#d9f99d"/>
+    </linearGradient>
+    <radialGradient id="cover-glow" cx="22%" cy="18%" r="68%">
+      <stop offset="0%" stop-color="#f8fbff" stop-opacity="0.44"/>
+      <stop offset="100%" stop-color="#f8fbff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.08"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b2d1d" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-bg)"/>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-glow)"/>
+  <rect width="720" height="1040" rx="22" filter="url(#paper)" opacity="0.52"/>
+  <rect x="34" y="34" width="652" height="972" rx="18" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3"/>
+  <path d="M0 0h62v1040H0z" fill="#071d14" opacity="0.26"/>
+  <path d="M62 0h12v1040H62z" fill="#ffffff" opacity="0.2"/>
+  <path d="M0 806 C172 742 276 824 438 758 C562 708 650 724 720 672 V1040 H0 Z" fill="#061826" opacity="0.1"/>
+  <g filter="url(#soft-shadow)">
+    
+      
+    <rect x="76" y="360" width="568" height="454" rx="18" fill="#f8fbff" opacity="0.88"/>
+    <rect x="98" y="382" width="524" height="410" rx="12" fill="none" stroke="#061826" stroke-opacity="0.16" stroke-width="3"/>
+  
+      <rect x="128" y="430" width="464" height="280" rx="16" fill="#061826"/>
+      <rect x="128" y="430" width="464" height="44" rx="16" fill="#102a43"/>
+      <circle cx="160" cy="452" r="7" fill="#d9f99d"/>
+      <circle cx="184" cy="452" r="7" fill="#38bdf8"/>
+      <circle cx="208" cy="452" r="7" fill="#ffffff" opacity="0.7"/>
+      <text x="166" y="526" font-family="Consolas, monospace" font-size="28" font-weight="800" fill="#38bdf8">&lt;main&gt;</text>
+      <text x="194" y="586" font-family="Consolas, monospace" font-size="24" font-weight="800" fill="#ffffff" opacity="0.92">display: grid;</text>
+      <text x="194" y="638" font-family="Consolas, monospace" font-size="24" font-weight="800" fill="#d9f99d">const app = ready;</text>
+      <path d="M178 754h364" stroke="#38bdf8" stroke-width="18" stroke-linecap="round" opacity="0.46"/>
+      <path d="M474 514l54 54l-54 54M246 514l-54 54l54 54" fill="none" stroke="#d9f99d" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    
+  </g>
+  
+    <g font-family="Georgia, 'Times New Roman', serif">
+      <rect x="66" y="58" width="588" height="306" rx="14" fill="#061826" opacity="0.94"/>
+      <rect x="88" y="82" width="544" height="258" rx="8" fill="none" stroke="#38bdf8" stroke-opacity="0.22" stroke-width="3"/>
+      <text x="106" y="124" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="900" letter-spacing="2" fill="#d9f99d">Technology</text>
+      <text x="106" y="184" font-size="60" font-weight="900" fill="#ffffff">Web Development</text>
+<text x="106" y="242.8" font-size="60" font-weight="900" fill="#ffffff">Guides</text>
+      <text x="106" y="301.20000000000005" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="800" fill="#f4fbf8" opacity="0.82">Free web development documentation for HTML,...</text>
+      <text x="94" y="934" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="900" fill="#ffffff">MDN Web Docs</text>
+      
+      <text x="626" y="958" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="900" fill="#ffffff" opacity="0.7">READ_MASTER</text>
+    </g>
+  
+  
+</svg>

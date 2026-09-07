@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reading List | Read_Master Library</title>
+  <link rel="stylesheet" href="css/style.css?v=cover-polish-1">
+  <link rel="stylesheet" href="css/responsive.css?v=cover-polish-1">
+</head>
+<body data-page="reading-list">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Read_Master Library home">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="reading-list.html" data-nav="reading-list">Reading List</a>
+      <a href="login.html" data-nav="login">Login/Signup</a>
+    </nav>
+  </header>
+
+  <main class="app-main narrow-main">
+    <p class="system-note" data-config-notice hidden></p>
+
+    <section class="page-heading">
+      <p class="eyebrow">Saved books</p>
+      <h1>Reading list</h1>
+      <p>Books saved on this device are shown here. Sign in later to sync this list with your Firebase account.</p>
+    </section>
+
+    <div class="content-toolbar simple-toolbar">
+      <strong id="savedListCount">0 saved books</strong>
+      <button class="btn secondary" id="clearSavedButton" type="button">Clear Saved</button>
+    </div>
+
+    <div class="book-grid saved-grid" id="savedBooksGrid" aria-live="polite"></div>
+    <p class="empty-state" id="savedEmptyState">No saved books yet.</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="index.html">Home</a>
+      <a href="reading-list.html">Reading List</a>
+    </nav>
+
+    <p class="footer-note">
+      <strong>Free digital reading resources.</strong>
+      <span>Open access books for study and personal reading.</span>
+    </p>
+  </footer>
+
+  <script type="module" src="js/main.js?v=profile-role-2"></script>
+  <script type="module" src="js/reading-list.js"></script>
+</body>
+</html>

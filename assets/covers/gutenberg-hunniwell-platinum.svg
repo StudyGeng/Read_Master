@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1040" viewBox="0 0 720 1040" role="img" aria-label="The Hunniwell Boys and the Platinum Mystery cover">
+  <defs>
+    <linearGradient id="cover-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#192734"/>
+      <stop offset="52%" stop-color="#c99a3e"/>
+      <stop offset="100%" stop-color="#d7ecf0"/>
+    </linearGradient>
+    <radialGradient id="cover-glow" cx="22%" cy="18%" r="68%">
+      <stop offset="0%" stop-color="#fff8df" stop-opacity="0.44"/>
+      <stop offset="100%" stop-color="#fff8df" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.08"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b2d1d" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-bg)"/>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-glow)"/>
+  <rect width="720" height="1040" rx="22" filter="url(#paper)" opacity="0.52"/>
+  <rect x="34" y="34" width="652" height="972" rx="18" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3"/>
+  <path d="M0 0h62v1040H0z" fill="#071d14" opacity="0.26"/>
+  <path d="M62 0h12v1040H62z" fill="#ffffff" opacity="0.2"/>
+  <path d="M0 806 C172 742 276 824 438 758 C562 708 650 724 720 672 V1040 H0 Z" fill="#101923" opacity="0.1"/>
+  <g filter="url(#soft-shadow)">
+    
+      
+    <rect x="76" y="360" width="568" height="454" rx="18" fill="#fff8df" opacity="0.88"/>
+    <rect x="98" y="382" width="524" height="410" rx="12" fill="none" stroke="#101923" stroke-opacity="0.16" stroke-width="3"/>
+  
+      <path d="M144 726V522h64v204M238 726V458h74v268M344 726V552h58v174M438 726V496h82v230" fill="#101923" opacity="0.9"/>
+      <circle cx="300" cy="562" r="92" fill="none" stroke="#c99a3e" stroke-width="22"/>
+      <path d="M368 628l112 118" stroke="#c99a3e" stroke-width="28" stroke-linecap="round"/>
+      <path d="M156 784h394" stroke="#d7ecf0" stroke-width="16" stroke-linecap="round" opacity="0.68"/>
+      <rect x="484" y="420" width="86" height="132" rx="10" fill="#d7ecf0" opacity="0.32"/>
+    
+  </g>
+  
+    <g font-family="Georgia, 'Times New Roman', serif">
+      <rect x="66" y="58" width="588" height="306" rx="14" fill="#101923" opacity="0.94"/>
+      <rect x="88" y="82" width="544" height="258" rx="8" fill="none" stroke="#c99a3e" stroke-opacity="0.22" stroke-width="3"/>
+      <text x="106" y="124" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="900" letter-spacing="2" fill="#d7ecf0">Literature</text>
+      <text x="106" y="184" font-size="45" font-weight="900" fill="#ffffff">The Hunniwell</text>
+<text x="106" y="228.1" font-size="45" font-weight="900" fill="#ffffff">Boys and the</text>
+<text x="106" y="272.2" font-size="45" font-weight="900" fill="#ffffff">Platinum</text>
+<text x="106" y="316.3" font-size="45" font-weight="900" fill="#ffffff">Mystery</text>
+      
+      <text x="94" y="934" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="900" fill="#ffffff">L. P. Wyman</text>
+      
+      <text x="626" y="958" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="900" fill="#ffffff" opacity="0.7">READ_MASTER</text>
+    </g>
+  
+  
+</svg>

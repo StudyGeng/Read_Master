@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile | Read_Master Library</title>
+  <link rel="stylesheet" href="css/style.css?v=profile-role-2">
+  <link rel="stylesheet" href="css/responsive.css?v=profile-role-2">
+  <link rel="stylesheet" href="css/admin.css?v=profile-role-2">
+</head>
+<body data-page="profile">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Read_Master Library home">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="reading-list.html" data-nav="reading-list" data-reader-link>Reading List</a>
+      <a href="login.html" data-nav="login">Login/Signup</a>
+    </nav>
+  </header>
+
+  <main class="app-main profile-main">
+    <section class="profile-card reader-profile-card" id="userProfile" aria-live="polite">
+      <div class="profile-hero-panel">
+        <div class="profile-avatar" data-user-initials>RM</div>
+        <div>
+          <p class="eyebrow" data-profile-kind>Reader profile</p>
+          <h1 data-user-name>Reader</h1>
+          <p class="profile-email" data-user-email>reader@example.com</p>
+        </div>
+      </div>
+
+      <div class="profile-content">
+        <div class="profile-overview">
+          <div>
+            <p class="eyebrow">Account</p>
+            <h2 data-profile-heading>Your reading space</h2>
+          </div>
+          <button class="btn secondary" type="button" data-edit-profile>Edit Profile</button>
+        </div>
+
+        <dl class="profile-meta">
+          <div>
+            <dt>Role</dt>
+            <dd data-user-role>User</dd>
+          </div>
+          <div data-saved-stat>
+            <dt>Saved books</dt>
+            <dd data-user-saved-count>0</dd>
+          </div>
+        </dl>
+
+        <form class="profile-edit-form" data-profile-edit-form hidden>
+          <p class="form-message" id="profileMessage" hidden></p>
+          <label class="field">
+            <span>Display name</span>
+            <input name="name" type="text" autocomplete="name" required data-profile-name-input>
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" readonly data-profile-email-input>
+            <small class="field-hint">Email is managed by your login account.</small>
+          </label>
+          <div class="action-row">
+            <button class="btn primary" type="submit">Save Changes</button>
+            <button class="btn secondary" type="button" data-cancel-edit>Cancel</button>
+          </div>
+        </form>
+
+        <div class="action-row">
+          <a class="btn primary" href="reading-list.html" data-reader-action>Reading List</a>
+          <a class="btn secondary" href="index.html#libraryShelf" data-reader-action>Browse Library</a>
+          <a class="btn primary" href="admin/dashboard.html" data-admin-action hidden>Dashboard</a>
+          <button class="btn secondary" type="button" data-user-logout>Logout</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="index.html">Home</a>
+      <a href="reading-list.html" data-reader-link>Reading List</a>
+    </nav>
+
+    <p class="footer-note">
+      <strong>Free digital reading resources.</strong>
+      <span>Open access books for study and personal reading.</span>
+    </p>
+  </footer>
+
+  <script type="module" src="js/main.js?v=profile-role-2"></script>
+  <script type="module" src="js/user-profile.js?v=profile-role-2"></script>
+</body>
+</html>

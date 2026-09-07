@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Login | Read_Master Library</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="auth-page reader-auth-page" data-page="login">
+  <main class="auth-shell">
+    <section class="role-auth-shell" aria-label="Read_Master account access">
+      <aside class="auth-visual-panel reader-visual">
+        <div>
+          <a class="brand auth-brand" href="index.html" aria-label="Read_Master Library home">
+            <span class="brand-mark" aria-hidden="true">RM</span>
+            <span>
+              <strong>Read_Master</strong>
+              <small>E-book Library</small>
+            </span>
+          </a>
+
+          <div class="auth-visual-copy">
+            <p class="eyebrow">Reader access</p>
+            <h1>Keep your free books close.</h1>
+            <p>Sign in to prepare your reading list and keep useful resources ready for later reading.</p>
+          </div>
+        </div>
+
+        <div class="role-card-grid" aria-label="Choose account type">
+          <a class="role-card active" href="login.html" aria-current="page">
+            <strong>User</strong>
+            <span>Read and save free books.</span>
+          </a>
+          <a class="role-card" href="admin/login.html">
+            <strong>Admin</strong>
+            <span>Manage library content.</span>
+          </a>
+        </div>
+      </aside>
+
+      <section class="auth-card">
+        <div class="auth-card-heading">
+          <p class="eyebrow">User account</p>
+          <h2>Welcome back</h2>
+          <p>Use a reader account for saved books across devices after Firebase is connected.</p>
+        </div>
+
+        <p class="system-note" data-config-notice hidden></p>
+        <div class="user-session-status" id="userSessionStatus" aria-live="polite"></div>
+
+        <div class="admin-demo-note" data-demo-note hidden>
+          <span>Local demo user</span>
+          <strong>reader@example.com</strong>
+          <small>Password: reader123</small>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="User account forms">
+          <button class="auth-tab active" id="loginTab" type="button" role="tab" aria-selected="true" aria-controls="userLoginForm" data-auth-tab="login">Sign in</button>
+          <button class="auth-tab" id="registerTab" type="button" role="tab" aria-selected="false" aria-controls="userRegisterForm" data-auth-tab="register">Create account</button>
+        </div>
+
+        <form class="data-form auth-form" id="userLoginForm" data-auth-form="login" aria-labelledby="loginTab">
+          <p class="form-message" id="userLoginMessage" hidden></p>
+
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required placeholder="reader@example.com">
+          </label>
+
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
+          </label>
+
+          <button class="btn primary" type="submit">Sign In</button>
+        </form>
+
+        <form class="data-form auth-form" id="userRegisterForm" data-auth-form="register" aria-labelledby="registerTab" hidden>
+          <p class="form-message" id="userRegisterMessage" hidden></p>
+
+          <label class="field">
+            <span>Name</span>
+            <input name="name" type="text" autocomplete="name" required maxlength="80" placeholder="Your name">
+          </label>
+
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required placeholder="reader@example.com">
+          </label>
+
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="At least 6 characters">
+          </label>
+
+          <button class="btn primary" type="submit">Create Account</button>
+        </form>
+
+        <div class="auth-foot-actions">
+          <a class="back-link" href="index.html">Back to home</a>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js?v=profile-role-2"></script>
+  <script type="module" src="js/user-auth.js?v=profile-role-2"></script>
+</body>
+</html>

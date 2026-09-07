@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1040" viewBox="0 0 720 1040" role="img" aria-label="The 64-Square Madhouse cover">
+  <defs>
+    <linearGradient id="cover-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f2937"/>
+      <stop offset="52%" stop-color="#d7b95a"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <radialGradient id="cover-glow" cx="22%" cy="18%" r="68%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.44"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.08"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b2d1d" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-bg)"/>
+  <rect width="720" height="1040" rx="22" fill="url(#cover-glow)"/>
+  <rect width="720" height="1040" rx="22" filter="url(#paper)" opacity="0.52"/>
+  <rect x="34" y="34" width="652" height="972" rx="18" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3"/>
+  <path d="M0 0h62v1040H0z" fill="#071d14" opacity="0.26"/>
+  <path d="M62 0h12v1040H62z" fill="#ffffff" opacity="0.2"/>
+  <path d="M0 806 C172 742 276 824 438 758 C562 708 650 724 720 672 V1040 H0 Z" fill="#111827" opacity="0.1"/>
+  <g filter="url(#soft-shadow)">
+    
+      
+    <rect x="76" y="360" width="568" height="454" rx="18" fill="#ffffff" opacity="0.88"/>
+    <rect x="98" y="382" width="524" height="410" rx="12" fill="none" stroke="#111827" stroke-opacity="0.16" stroke-width="3"/>
+  
+      <g transform="translate(180 438)">
+        <rect x="0" y="0" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="34" y="0" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="68" y="0" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="102" y="0" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="136" y="0" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="170" y="0" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="204" y="0" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="238" y="0" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="0" y="34" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="34" y="34" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="68" y="34" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="102" y="34" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="136" y="34" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="170" y="34" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="204" y="34" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="238" y="34" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="0" y="68" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="34" y="68" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="68" y="68" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="102" y="68" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="136" y="68" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="170" y="68" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="204" y="68" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="238" y="68" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="0" y="102" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="34" y="102" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="68" y="102" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="102" y="102" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="136" y="102" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="170" y="102" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="204" y="102" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="238" y="102" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="0" y="136" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="34" y="136" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="68" y="136" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="102" y="136" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="136" y="136" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="170" y="136" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="204" y="136" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="238" y="136" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="0" y="170" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="34" y="170" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="68" y="170" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="102" y="170" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="136" y="170" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="170" y="170" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="204" y="170" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="238" y="170" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="0" y="204" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="34" y="204" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="68" y="204" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="102" y="204" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="136" y="204" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="170" y="204" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="204" y="204" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="238" y="204" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="0" y="238" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="34" y="238" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="68" y="238" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="102" y="238" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="136" y="238" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="170" y="238" width="34" height="34" fill="#ffffff" opacity="0.95"/><rect x="204" y="238" width="34" height="34" fill="#1f2937" opacity="0.84"/><rect x="238" y="238" width="34" height="34" fill="#ffffff" opacity="0.95"/>
+      </g>
+      <circle cx="486" cy="666" r="74" fill="#d7b95a" opacity="0.92"/>
+      <path d="M448 666h76M486 628v76" stroke="#ffffff" stroke-width="15" stroke-linecap="round"/>
+      <text x="186" y="754" font-family="Georgia, serif" font-size="46" font-weight="900" fill="#111827">x + y = 1</text>
+    
+  </g>
+  
+    <g font-family="Georgia, 'Times New Roman', serif">
+      <rect x="66" y="58" width="588" height="306" rx="14" fill="#ffffff" opacity="0.94"/>
+      <rect x="88" y="82" width="544" height="258" rx="8" fill="none" stroke="#1f2937" stroke-opacity="0.22" stroke-width="3"/>
+      <text x="106" y="124" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="900" letter-spacing="2" fill="#d7b95a">Science</text>
+      <text x="106" y="184" font-size="62" font-weight="900" fill="#111827">The 64-Square</text>
+<text x="106" y="244.76" font-size="62" font-weight="900" fill="#111827">Madhouse</text>
+      <text x="106" y="304.24" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="800" fill="#1f2937" opacity="0.82">A public domain science fiction story mixing...</text>
+      <text x="94" y="934" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="900" fill="#111827">Fritz Leiber</text>
+      
+      <text x="626" y="958" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="900" fill="#111827" opacity="0.7">READ_MASTER</text>
+    </g>
+  
+  
+</svg>

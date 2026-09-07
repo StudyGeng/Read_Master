@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | Read_Master Library</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="admin-page auth-page" data-page="admin-login">
+  <main class="auth-shell">
+    <section class="role-auth-shell" aria-label="Read_Master admin access">
+      <aside class="auth-visual-panel admin-visual">
+        <div>
+          <a class="brand auth-brand" href="../index.html" aria-label="Read_Master Library home">
+            <span class="brand-mark" aria-hidden="true">RM</span>
+            <span>
+              <strong>Read_Master</strong>
+              <small>Library system</small>
+            </span>
+          </a>
+
+          <div class="auth-visual-copy">
+            <p class="eyebrow">Role access</p>
+            <h1>Two doors, one library.</h1>
+            <p>Readers save useful books. Admins publish new releases, update records, and keep the catalog clean.</p>
+          </div>
+        </div>
+
+        <div class="role-card-grid" aria-label="Choose account type">
+          <a class="role-card" href="../login.html">
+            <strong>User</strong>
+            <span>Read and save free books.</span>
+          </a>
+          <a class="role-card active" href="login.html" aria-current="page">
+            <strong>Admin</strong>
+            <span>Add and update resources.</span>
+          </a>
+        </div>
+      </aside>
+
+      <section class="auth-card">
+        <div class="auth-card-heading">
+          <p class="eyebrow">Admin access</p>
+          <h2>Sign in</h2>
+          <p>Manage books, new releases, and resource files.</p>
+        </div>
+
+        <p class="system-note" data-config-notice hidden></p>
+
+        <form class="data-form auth-form" id="adminLoginForm">
+          <p class="form-message" id="loginMessage" hidden></p>
+
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required placeholder="your-admin@email.com">
+          </label>
+
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="current-password" required placeholder="Your admin password">
+          </label>
+
+          <button class="btn primary" type="submit">Login</button>
+        </form>
+
+        <div class="admin-demo-note" data-admin-demo-note hidden>
+          <span>Demo admin</span>
+          <strong>admin@example.com</strong>
+          <small>Password: admin123</small>
+        </div>
+
+        <div class="admin-demo-note" data-live-admin-note hidden>
+          <span>Firebase admin required</span>
+          <strong>Use an account created in Firebase Auth.</strong>
+          <small>Auth user alone is not enough. Add its UID as the Firestore `admins` document ID with `active = true`.</small>
+        </div>
+
+        <div class="auth-foot-actions">
+          <a class="back-link" href="../index.html">Back to home</a>
+          <a class="back-link" href="../login.html">User login</a>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="../js/main.js?v=profile-role-2"></script>
+  <script type="module" src="../js/admin-auth.js?v=profile-role-2"></script>
+</body>
+</html>

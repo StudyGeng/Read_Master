@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Details | Read_Master Library</title>
+  <link rel="stylesheet" href="css/style.css?v=cover-polish-1">
+  <link rel="stylesheet" href="css/responsive.css?v=cover-polish-1">
+</head>
+<body data-page="book-details">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Read_Master Library home">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="reading-list.html" data-nav="reading-list">Reading List</a>
+      <a href="login.html" data-nav="login">Login/Signup</a>
+    </nav>
+  </header>
+
+  <main class="app-main">
+    <p class="system-note" data-config-notice hidden></p>
+
+    <a class="back-link" href="index.html">Back to home</a>
+
+    <section class="details-layout" id="bookDetails" aria-live="polite">
+      <div class="book-cover-large" id="detailCover">
+        <span id="detailInitials">RM</span>
+      </div>
+
+      <article class="details-content">
+        <p class="eyebrow" id="detailCategory">Book details</p>
+        <h1 id="detailTitle">Loading book...</h1>
+        <p class="meta-line" id="detailMeta"></p>
+        <p class="details-description" id="detailDescription"></p>
+
+        <dl class="details-list">
+          <div>
+            <dt>Format</dt>
+            <dd id="detailFormat">-</dd>
+          </div>
+          <div>
+            <dt>Language</dt>
+            <dd id="detailLanguage">-</dd>
+          </div>
+          <div>
+            <dt>Release date</dt>
+            <dd id="detailReleaseDate">-</dd>
+          </div>
+          <div>
+            <dt>License</dt>
+            <dd id="detailLicense">-</dd>
+          </div>
+        </dl>
+
+        <div class="action-row">
+          <button class="btn primary" id="previewResourceButton" type="button">Read Preview</button>
+          <a class="btn secondary" id="downloadResourceButton" href="#" download>Download PDF</a>
+          <button class="btn secondary" id="saveBookButton" type="button">Save Book</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="resource-reader" id="resourceReader" hidden aria-live="polite">
+      <div class="reader-toolbar">
+        <div>
+          <p class="eyebrow">Preview</p>
+          <h2 id="readerTitle">Read inside Read_Master</h2>
+        </div>
+        <a class="btn secondary" id="readerDownloadButton" href="#" download>Download PDF</a>
+      </div>
+      <div class="reader-frame" id="resourceFrame" tabindex="0" aria-label="Book preview"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="index.html">Home</a>
+      <a href="reading-list.html">Reading List</a>
+    </nav>
+
+    <p class="footer-note">
+      <strong>Free digital reading resources.</strong>
+      <span>Open access books for study and personal reading.</span>
+    </p>
+  </footer>
+
+  <script type="module" src="js/main.js?v=profile-role-2"></script>
+  <script type="module" src="js/book-details.js?v=cover-polish-1"></script>
+</body>
+</html>

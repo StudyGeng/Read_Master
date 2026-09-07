@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Read_Master Library</title>
+  <link rel="stylesheet" href="css/style.css?v=cover-polish-1">
+  <link rel="stylesheet" href="css/responsive.css?v=cover-polish-1">
+</head>
+<body data-page="home">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Read_Master Library home">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </a>
+
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="index.html" data-nav="home">Home</a>
+      <a href="reading-list.html" data-nav="reading-list">Reading List</a>
+      <a href="login.html" data-nav="login">Login/Signup</a>
+    </nav>
+  </header>
+
+  <main class="app-main">
+    <p class="system-note" data-config-notice hidden></p>
+
+    <section class="library-hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <p class="eyebrow">Open access reading</p>
+        <h1 id="heroTitle">Free e-books for students, readers, and lifelong learning.</h1>
+        <p class="hero-text">Browse approved digital resources, save useful books, and build a calm reading list for study.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#libraryShelf">Browse Library</a>
+          <a class="btn secondary" href="reading-list.html">Reading List</a>
+        </div>
+
+        <div class="hero-metrics" aria-label="Library highlights">
+          <div>
+            <strong>Free</strong>
+            <span>No payment needed</span>
+          </div>
+          <div>
+            <strong>Legal</strong>
+            <span>Reviewed resources</span>
+          </div>
+          <div>
+            <strong>Any device</strong>
+            <span>Responsive layout</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-banner-media">
+        <img src="assets/images/library-banner.png" alt="Green and white digital library with books, plants, and an e-reader">
+      </div>
+    </section>
+
+    <section class="home-board" aria-label="Home book highlights">
+      <section class="trend-showcase" aria-labelledby="trendingTitle">
+        <div class="center-heading">
+          <p class="eyebrow">Popular / trending</p>
+          <h2 id="trendingTitle">This Week Trending Books</h2>
+        </div>
+
+        <div class="trend-carousel" aria-label="Trending book carousel">
+          <button class="carousel-button" type="button" data-trend-prev aria-label="Previous trending books">&lt;</button>
+          <div class="trend-window">
+            <div class="trend-track" id="trendingTrack">
+              <p class="loading-text">Loading trending books...</p>
+            </div>
+          </div>
+          <button class="carousel-button" type="button" data-trend-next aria-label="Next trending books">&gt;</button>
+        </div>
+      </section>
+
+      <section class="book-feature-stack" aria-label="Book updates">
+        <div id="newReleaseSpotlight">
+          <p class="loading-text">Loading new release...</p>
+        </div>
+        <div id="upcomingSpotlight">
+          <p class="loading-text">Loading upcoming book...</p>
+        </div>
+      </section>
+    </section>
+
+    <section class="catalog-shell" id="libraryShelf" aria-label="Free e-book catalog">
+      <aside class="filter-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">Free resources</p>
+          <h2>Find your book</h2>
+          <p>Read public domain, open-license, and approved learning resources.</p>
+        </div>
+
+        <label class="field">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Search title, author, topic">
+        </label>
+
+        <div class="field">
+          <span>Category</span>
+          <div class="category-buttons" id="categoryButtons" aria-label="Book categories"></div>
+        </div>
+
+        <label class="field">
+          <span>Format</span>
+          <select id="formatSelect">
+            <option value="All">All formats</option>
+          </select>
+        </label>
+      </aside>
+
+      <section class="library-content">
+        <div class="content-toolbar">
+          <div>
+            <p class="eyebrow">Library</p>
+            <h2 id="catalogTitle">Available books</h2>
+          </div>
+          <label class="sort-field">
+            <span>Sort</span>
+            <select id="sortSelect">
+              <option value="newest">Newest first</option>
+              <option value="title">Title A-Z</option>
+              <option value="author">Author A-Z</option>
+              <option value="coming-soon">Coming soon</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="resource-summary" aria-label="Library summary">
+          <div>
+            <strong id="totalCount">0</strong>
+            <span>Total resources</span>
+          </div>
+          <div>
+            <strong id="visibleCount">0</strong>
+            <span>Matching results</span>
+          </div>
+          <div>
+            <strong id="savedCount">0</strong>
+            <span>Saved books</span>
+          </div>
+        </div>
+
+        <div class="book-grid" id="bookGrid" aria-live="polite">
+          <p class="loading-text">Loading books...</p>
+        </div>
+
+        <p class="empty-state" id="emptyState" hidden>No books found.</p>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="bookModal" hidden>
+    <section class="book-modal" role="dialog" aria-modal="true" aria-labelledby="modalBookTitle">
+      <button class="modal-close" type="button" data-modal-close aria-label="Close">&times;</button>
+      <div id="modalBookContent"></div>
+    </section>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>
+        <strong>Read_Master</strong>
+        <small>E-book Library</small>
+      </span>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="index.html">Home</a>
+      <a href="reading-list.html">Reading List</a>
+    </nav>
+
+    <p class="footer-note">
+      <strong>Free digital reading resources.</strong>
+      <span>Open access books for study and personal reading.</span>
+    </p>
+  </footer>
+
+  <script type="module" src="js/main.js?v=profile-role-2"></script>
+  <script type="module" src="js/books.js?v=cover-polish-1"></script>
+</body>
+</html>

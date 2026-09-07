@@ -1,0 +1,23 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "Book_resources/**",
+      "PROJECT_PLAN.md",
+      "README.md",
+      "package.json",
+      "tools/**",
+      "docs/**",
+      "firebase/**"
+    ]
+  },
+  "firestore": {
+    "rules": "firebase/firestore.rules"
+  },
+  "storage": {
+    "rules": "firebase/storage.rules"
+  }
+}
