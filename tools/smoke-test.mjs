@@ -22,8 +22,8 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const service = await import("../js/firebase-service.js");
-const readingStore = await import("../js/reading-store.js");
+const service = await import("../public/js/firebase-service.js");
+const readingStore = await import("../public/js/reading-store.js");
 
 const cachedPublishedBooks = service.listCachedPublishedBooks();
 assert(cachedPublishedBooks.length >= 10, "Expected cached demo books to load instantly.");

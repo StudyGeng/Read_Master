@@ -16,7 +16,7 @@ function renderConfigNotices() {
   const isConnected = isFirebaseEnabled();
   const text = isConnected
     ? getDataModeLabel()
-    : `${getDataModeLabel()}. Add Firebase keys in js/firebase-config.js before real deployment.`;
+    : `${getDataModeLabel()}. Add Firebase keys in public/js/firebase-config.js before real deployment.`;
 
   $$("[data-config-notice]").forEach((notice) => {
     notice.textContent = text;

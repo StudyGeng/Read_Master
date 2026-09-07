@@ -9,7 +9,7 @@ from reportlab.pdfgen import canvas
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BOOK_DIR = ROOT / "assets" / "books"
+BOOK_DIR = ROOT / "public" / "assets" / "books"
 
 BOOKS = [
     {

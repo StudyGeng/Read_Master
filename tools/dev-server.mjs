@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { basename, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const root = resolve(fileURLToPath(new URL("../public/", import.meta.url)));
 const port = Number(process.argv[2] || process.env.PORT || 5500);
 const host = "127.0.0.1";
 

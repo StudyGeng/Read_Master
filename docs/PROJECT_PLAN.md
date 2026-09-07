@@ -190,68 +190,35 @@ Recommended structure:
 
 ```text
 E-book-libary-system/
-|-- PROJECT_PLAN.md
 |-- README.md
-|-- index.html
-|-- book-details.html
-|-- profile.html
-|-- reading-list.html
-|-- admin/
+|-- public/
+|   |-- index.html
+|   |-- book-details.html
+|   |-- profile.html
+|   |-- reading-list.html
 |   |-- login.html
-|   |-- dashboard.html
-|   |-- add-book.html
-|   |-- edit-book.html
-|-- assets/
-|   |-- images/
-|   |-- covers/
-|   |-- icons/
-|-- css/
-|   |-- style.css
-|   |-- responsive.css
-|   |-- admin.css
-|-- js/
-|   |-- firebase-config.js
-|   |-- main.js
-|   |-- books.js
-|   |-- book-details.js
-|   |-- user-profile.js
-|   |-- reading-list.js
-|   |-- admin-auth.js
-|   |-- admin-books.js
+|   |-- admin/
+|   |-- assets/
+|   |-- css/
+|   |-- js/
 |-- firebase/
 |   |-- firestore.rules
 |   |-- storage.rules
 |-- docs/
+|   |-- PROJECT_PLAN.md
 |   |-- database-structure.md
 |   |-- firebase-setup.md
 |   |-- legal-resources.md
+|-- tools/
 ```
 
 ### File Purpose
 
-- `index.html`: public home and main library page.
-- `book-details.html`: page for showing full book information.
-- `profile.html`: local user profile preview after user login.
-- `reading-list.html`: page for saved books.
-- `login.html`: user login and sign up page.
-- `admin/login.html`: admin login page using Firebase Auth.
-- `admin/dashboard.html`: admin overview page.
-- `admin/add-book.html`: form for admin to add new released books.
-- `admin/edit-book.html`: form for admin to update existing book data.
-- `assets/images`: general images used by the website.
-- `assets/covers`: book cover images.
-- `assets/icons`: website icons or logo files.
-- `css/style.css`: main public website design.
-- `css/responsive.css`: responsive rules for mobile, tablet, and desktop.
-- `css/admin.css`: admin page design.
-- `js/firebase-config.js`: Firebase project configuration.
-- `js/main.js`: common public website logic.
-- `js/books.js`: load books from Firestore, search, and filter.
-- `js/book-details.js`: load one selected book.
-- `js/user-profile.js`: show user profile and saved book count.
-- `js/reading-list.js`: saved book logic.
-- `js/admin-auth.js`: admin login, logout, and auth checking.
-- `js/admin-books.js`: admin add, edit, delete, and manage book logic.
+- `public/`: all files served by the website, including pages, styles, scripts, and assets.
+- `public/admin/`: administrator login and catalogue management pages.
+- `public/assets/`: book files, covers, images, and icons.
+- `public/css/`: public and administrator page styles.
+- `public/js/`: website behaviour, Firebase integration, and catalogue logic.
 - `firebase/firestore.rules`: Firestore database security rules.
 - `firebase/storage.rules`: Firebase Storage security rules.
 - `docs/database-structure.md`: detailed database field notes.

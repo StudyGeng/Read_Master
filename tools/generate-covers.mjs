@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { sampleBooks } from "../js/sample-data.js";
+import { sampleBooks } from "../public/js/sample-data.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const coverDir = resolve(root, "assets", "covers");
+const coverDir = resolve(root, "public", "assets", "covers");
 
 const palettes = {
   study: ["#1b5238", "#76b589", "#f6eed8", "#fffaf0", "#123d2a"],
@@ -668,4 +668,4 @@ await Promise.all(sampleBooks.map((book) => {
   return writeFile(output, coverSvg(book), "utf8");
 }));
 
-console.log(`Generated ${sampleBooks.length} trade-style covers in assets/covers.`);
+console.log(`Generated ${sampleBooks.length} trade-style covers in public/assets/covers.`);

@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "start": "node tools/dev-server.mjs 5500",
-    "check": "node --check js/firebase-service.js && node --check js/main.js && node --check js/books.js && node --check js/book-details.js && node --check js/reading-list.js && node --check js/user-auth.js && node --check js/user-profile.js && node --check js/admin-auth.js && node --check js/admin-books.js",
+    "check": "node --check public/js/firebase-service.js && node --check public/js/main.js && node --check public/js/books.js && node --check public/js/book-details.js && node --check public/js/reading-list.js && node --check public/js/user-auth.js && node --check public/js/user-profile.js && node --check public/js/admin-auth.js && node --check public/js/admin-books.js",
     "smoke": "node tools/smoke-test.mjs"
   }
 }

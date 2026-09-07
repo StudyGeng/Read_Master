@@ -7,7 +7,7 @@ Create a Firebase project and add a web app.
 Copy the web app config into:
 
 ```text
-js/firebase-config.js
+public/js/firebase-config.js
 ```
 
 Replace the placeholder values:
