@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Book Details | Read_Master Library</title>
-  <link rel="stylesheet" href="css/style.css?v=cover-polish-1">
-  <link rel="stylesheet" href="css/responsive.css?v=cover-polish-1">
+  <link rel="stylesheet" href="css/style.css?v=reader-access-1">
+  <link rel="stylesheet" href="css/responsive.css?v=reader-access-1">
 </head>
 <body data-page="book-details">
   <header class="site-header">
@@ -59,9 +59,12 @@
           </div>
         </dl>
 
+        <p class="book-access-note" id="bookAccessMessage" aria-live="polite">Checking reader access...</p>
+
         <div class="action-row">
           <button class="btn primary" id="previewResourceButton" type="button">Read Preview</button>
-          <a class="btn secondary" id="downloadResourceButton" href="#" download>Download PDF</a>
+          <button class="btn secondary" id="readResourceButton" type="button">Checking Access...</button>
+          <button class="btn secondary" id="downloadResourceButton" type="button">Checking Access...</button>
           <button class="btn secondary" id="saveBookButton" type="button">Save Book</button>
         </div>
       </article>
@@ -73,7 +76,10 @@
           <p class="eyebrow">Preview</p>
           <h2 id="readerTitle">Read inside Read_Master</h2>
         </div>
-        <a class="btn secondary" id="readerDownloadButton" href="#" download>Download PDF</a>
+        <div class="reader-toolbar-actions">
+          <button class="btn secondary" id="readerReadButton" type="button">Checking Access...</button>
+          <button class="btn secondary" id="readerDownloadButton" type="button">Checking Access...</button>
+        </div>
       </div>
       <div class="reader-frame" id="resourceFrame" tabindex="0" aria-label="Book preview"></div>
     </section>
@@ -100,6 +106,6 @@
   </footer>
 
   <script type="module" src="js/main.js?v=profile-role-2"></script>
-  <script type="module" src="js/book-details.js?v=cover-polish-1"></script>
+  <script type="module" src="js/book-details.js?v=reader-access-1"></script>
 </body>
 </html>

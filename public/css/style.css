@@ -1005,6 +1005,16 @@ textarea:focus {
   margin-top: auto;
 }
 
+.book-access-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(35, 107, 73, 0.2);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--green-900);
+  font-weight: 750;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1265,6 +1275,13 @@ textarea:focus {
 .reader-toolbar h2 {
   margin: 5px 0 0;
   font-size: clamp(1.5rem, 2vw, 2.1rem);
+}
+
+.reader-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .reader-frame {
@@ -1552,7 +1569,7 @@ textarea:focus {
 }
 
 .reader-profile-card .profile-meta {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .admin-profile-mode .reader-profile-card .profile-meta {
@@ -1572,6 +1589,79 @@ textarea:focus {
   display: none;
 }
 
+.profile-settings-panel {
+  display: grid;
+  gap: 14px;
+  max-height: min(70vh, 760px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.profile-settings-panel[hidden] {
+  display: none;
+}
+
+.profile-form-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.profile-form-heading h3,
+.profile-form-heading p {
+  margin: 0;
+}
+
+.profile-form-heading p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.profile-photo-editor {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-photo-actions .field-hint {
+  flex-basis: 100%;
+}
+
+.profile-photo-picker {
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-photo-picker input {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.profile-avatar-preview {
+  flex: 0 0 auto;
+  width: 88px;
+  height: 88px;
+}
+
+.profile-security-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #e2cc88;
+  border-radius: 8px;
+  background: var(--surface-warm);
+  color: #6d5621;
+  font-weight: 750;
+}
+
 .profile-avatar {
   display: grid;
   place-items: center;
@@ -1583,6 +1673,13 @@ textarea:focus {
   font-size: 2rem;
   font-weight: 900;
   box-shadow: 0 18px 32px rgba(18, 61, 42, 0.18);
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile-content {

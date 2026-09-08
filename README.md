@@ -50,7 +50,7 @@ Administrators can:
 - **Book Details:** Displays a book's description, author, category, licence, and reading link.
 - **Login:** Allows readers to register or sign in.
 - **Reading List:** Shows books saved by the signed-in reader.
-- **Profile:** Displays and updates reader account information.
+- **Profile:** Updates a reader's display name and profile photo, and securely verifies email and password changes through Firebase Authentication.
 - **Admin Dashboard:** Provides catalogue statistics and management shortcuts.
 - **Add/Edit Book:** Allows administrators to maintain catalogue records.
 
@@ -59,6 +59,36 @@ Administrators can:
 Books should only be published when they are in the public domain, released under a suitable open licence, owned by the institution, or shared with the author's permission. Administrators must confirm the source and licence information before adding a resource to the public catalogue.
 
 Further guidance is available in `docs/legal-resources.md`.
+
+> Access note: files placed inside `public/` are public static assets. Use protected Firebase Storage paths for any full book that must require sign-in; keep only preview material in `public/`.
+
+## Running Locally and Hosting Online
+
+For local development, start the project with:
+
+```bash
+npm start
+```
+
+The local website at `http://localhost:5500/` is available only while the development server is running. Closing the terminal, closing VS Code, or turning off the computer stops the local website.
+
+To publish the website with Firebase Hosting, sign in and deploy from the project directory:
+
+```bash
+npx firebase-tools login
+npx firebase-tools deploy --only hosting,firestore,storage --project read-master-library
+```
+
+After Firebase displays `Deploy complete!`, the website remains available at `https://read-master-library.web.app` even when VS Code is closed or the development computer is turned off. Run the deploy command again whenever local changes need to be published.
+
+## Administrator Security
+
+The project does not publish a default administrator email or password. An administrator must have both:
+
+1. An Email/Password account created in Firebase Authentication.
+2. A Firestore document at `admins/{the-auth-user-uid}` with `active` set to Boolean `true`.
+
+The admin pages verify both requirements with Firebase. A browser-cached value alone cannot grant administrator access. See `docs/firebase-setup.md` for the setup fields and deploy the included Firestore and Storage rules before using the public site.
 
 ## Project Scope
 

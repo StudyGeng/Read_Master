@@ -35,6 +35,8 @@ function updateAccountLinks(user) {
 }
 
 async function renderAccountNav() {
+  if (document.body.classList.contains("admin-page")) return;
+
   const cachedAdmin = getCachedAdmin();
   const cachedUser = getCachedUser();
   const cachedReader = cachedUser && cachedUser.uid !== cachedAdmin?.uid ? cachedUser : null;

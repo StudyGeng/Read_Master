@@ -272,6 +272,16 @@
     flex-direction: column;
   }
 
+  .profile-photo-editor,
+  .profile-photo-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-avatar-preview {
+    align-self: center;
+  }
+
   .book-card {
     grid-template-rows: 330px auto;
     min-height: 0;
@@ -281,6 +291,7 @@
   .book-actions,
   .action-row,
   .reader-toolbar,
+  .reader-toolbar-actions,
   .split-actions > div {
     display: grid;
     grid-template-columns: 1fr;

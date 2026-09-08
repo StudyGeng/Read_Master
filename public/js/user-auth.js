@@ -1,5 +1,10 @@
 import { getCachedUser, getCurrentUser, isFirebaseEnabled, loginUser, logoutUser, registerUser } from "./firebase-service.js";
+import { getSafeReturnPath } from "./book-access.js";
 import { $, $$, clearMessage, escapeHtml, setMessage } from "./utils.js";
+
+const requestedReturnPath = new URLSearchParams(window.location.search).get("returnTo");
+const postAuthDestination = getSafeReturnPath(requestedReturnPath, window.location.href);
+const isReturningToBook = postAuthDestination.startsWith("book-details.html?");
 
 function friendlyAuthError(error) {
   const code = error?.code || "";
@@ -72,7 +77,7 @@ function renderSessionStatus(session) {
   status.innerHTML = `
     <span>Signed in as</span>
     <strong>${escapeHtml(session.name || session.email)}</strong>
-    <a class="btn primary" href="profile.html">Open Profile</a>
+    <a class="btn primary" href="${escapeHtml(postAuthDestination)}">${isReturningToBook ? "Continue to Book" : "Open Profile"}</a>
     <button class="btn secondary" type="button" data-user-logout>Logout</button>
   `;
 
@@ -113,8 +118,8 @@ function bindLoginForm() {
     try {
       submitButton.disabled = true;
       await loginUser(formData.get("email"), formData.get("password"));
-      setMessage(message, "Signed in. Opening your profile...", "success");
-      window.location.href = "profile.html";
+      setMessage(message, isReturningToBook ? "Signed in. Returning to your book..." : "Signed in. Opening your profile...", "success");
+      window.location.href = postAuthDestination;
     } catch (error) {
       setMessage(message, friendlyAuthError(error), "error");
     } finally {
@@ -145,14 +150,14 @@ function bindRegisterForm() {
         email,
         password
       );
-      setMessage(message, "Account created. Opening your profile...", "success");
-      window.location.href = "profile.html";
+      setMessage(message, isReturningToBook ? "Account created. Returning to your book..." : "Account created. Opening your profile...", "success");
+      window.location.href = postAuthDestination;
     } catch (error) {
       if ((error?.code || "").includes("auth/email-already-in-use")) {
         try {
           await loginUser(email, password);
-          setMessage(message, "Account already exists. Opening your profile...", "success");
-          window.location.href = "profile.html";
+          setMessage(message, isReturningToBook ? "Account already exists. Returning to your book..." : "Account already exists. Opening your profile...", "success");
+          window.location.href = postAuthDestination;
           return;
         } catch {
           setMessage(message, "This email already has an account. Please sign in instead.", "error");

@@ -16,16 +16,46 @@ service cloud.firestore {
         && get(adminPath(request.auth.uid)).data.active == true;
     }
 
+    function ownsUserProfile(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function validUserProfileCreate() {
+      return request.resource.data.keys().hasOnly([
+          "name",
+          "email",
+          "role",
+          "photoURL",
+          "photoPath",
+          "createdAt",
+          "updatedAt"
+        ])
+        && request.resource.data.role == "user"
+        && request.resource.data.email == request.auth.token.email;
+    }
+
+    function validUserProfileUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "name",
+          "email",
+          "photoURL",
+          "photoPath",
+          "updatedAt"
+        ])
+        && request.resource.data.role == "user"
+        && request.resource.data.email == request.auth.token.email;
+    }
+
     match /admins/{adminId} {
       allow get: if signedIn() && request.auth.uid == adminId;
       allow list, create, update, delete: if isAdmin();
     }
 
     match /users/{userId} {
-      allow create: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.role == "user";
-      allow get, update, delete: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if ownsUserProfile(userId) && validUserProfileCreate();
+      allow get: if ownsUserProfile(userId) || isAdmin();
+      allow update: if isAdmin() || (ownsUserProfile(userId) && validUserProfileUpdate());
+      allow delete: if ownsUserProfile(userId) || isAdmin();
       allow list: if isAdmin();
 
       match /savedBooks/{savedBookId} {

@@ -1,4 +1,4 @@
-import { getCachedAdmin, getCurrentAdmin, isFirebaseEnabled, loginAdmin, logoutAdmin } from "./firebase-service.js";
+import { getCurrentAdmin, isFirebaseEnabled, loginAdmin, logoutAdmin } from "./firebase-service.js";
 import { $, $$, clearMessage, setMessage } from "./utils.js";
 
 function friendlyAdminError(error) {
@@ -40,22 +40,13 @@ function friendlyAdminError(error) {
 }
 
 export async function guardAdminPage() {
-  const cachedSession = getCachedAdmin();
-  if (cachedSession) {
-    getCurrentAdmin()
-      .then((verifiedSession) => {
-        if (!verifiedSession) {
-          window.location.href = "login.html";
-        }
-      })
-      .catch((error) => {
-        console.warn("Admin permission recheck is slow.", error);
-      });
+  let session = null;
 
-    return cachedSession;
+  try {
+    session = await getCurrentAdmin();
+  } catch (error) {
+    console.warn("Admin permission could not be verified.", error);
   }
-
-  const session = await getCurrentAdmin();
 
   if (!session) {
     window.location.href = "login.html";
@@ -95,22 +86,16 @@ async function initLoginPage() {
   if (!loginForm) return;
 
   const loginMessage = $("#loginMessage");
-  const demoNote = $("[data-admin-demo-note]");
   const liveNote = $("[data-live-admin-note]");
+  const firebaseEnabled = isFirebaseEnabled();
 
-  if (isFirebaseEnabled()) {
-    if (demoNote) demoNote.hidden = true;
-    if (liveNote) liveNote.hidden = false;
-  } else {
-    if (demoNote) demoNote.hidden = false;
-    if (liveNote) liveNote.hidden = true;
-    loginForm.elements.email.value = loginForm.elements.email.value || "admin@example.com";
-    loginForm.elements.password.value = loginForm.elements.password.value || "admin123";
-  }
+  if (liveNote) liveNote.hidden = false;
 
-  const cachedSession = getCachedAdmin();
-  if (cachedSession) {
-    window.location.href = "dashboard.html";
+  if (!firebaseEnabled) {
+    [...loginForm.elements].forEach((element) => {
+      element.disabled = true;
+    });
+    setMessage(loginMessage, "Admin access is unavailable until Firebase Authentication is configured.", "error");
     return;
   }
 

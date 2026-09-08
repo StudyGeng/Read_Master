@@ -1,4 +1,5 @@
-import { getBook, getCachedBook, isPublicBook } from "./firebase-service.js";
+import { getBook, getCachedBook, getCurrentUser, isPublicBook } from "./firebase-service.js";
+import { buildBookLoginUrl, getBookAccess } from "./book-access.js";
 import { isBookSaved, toggleSavedBook } from "./reading-store.js";
 import { $, categoryTone, escapeAttribute, escapeHtml, formatDate, getQueryParam, initialsFromTitle } from "./utils.js";
 
@@ -14,14 +15,19 @@ const detailLanguage = $("#detailLanguage");
 const detailReleaseDate = $("#detailReleaseDate");
 const detailLicense = $("#detailLicense");
 const previewResourceButton = $("#previewResourceButton");
+const readResourceButton = $("#readResourceButton");
 const downloadResourceButton = $("#downloadResourceButton");
+const bookAccessMessage = $("#bookAccessMessage");
 const resourceReader = $("#resourceReader");
 const resourceFrame = $("#resourceFrame");
 const readerTitle = $("#readerTitle");
+const readerReadButton = $("#readerReadButton");
 const readerDownloadButton = $("#readerDownloadButton");
 const saveBookButton = $("#saveBookButton");
 
 let currentBook = null;
+let currentUser = null;
+let readerAccessResolved = false;
 
 const demoPreviewSections = {
   "readmaster-study-skills-starter": [
@@ -353,26 +359,6 @@ function resourceUrlFor(book) {
   return String(book?.resourceUrl || "").trim();
 }
 
-function isPdfResource(book) {
-  const resourceUrl = resourceUrlFor(book);
-  if (!resourceUrl) return false;
-
-  try {
-    const pathname = decodeURIComponent(new URL(resourceUrl, window.location.href).pathname).toLowerCase();
-    return pathname.endsWith(".pdf") || pathname.includes(".pdf/");
-  } catch (error) {
-    return resourceUrl.split(/[?#]/)[0].toLowerCase().endsWith(".pdf");
-  }
-}
-
-function isPublishedBook(book) {
-  return String(book?.status || "published").toLowerCase() === "published";
-}
-
-function canPreviewPdf(book) {
-  return isPublishedBook(book) && isPdfResource(book);
-}
-
 function downloadNameFor(book) {
   const slug = String(book?.title || "read-master-book")
     .toLowerCase()
@@ -382,9 +368,57 @@ function downloadNameFor(book) {
   return `${slug || "read-master-book"}.pdf`;
 }
 
-function setDownloadLink(element, book) {
-  element.href = resourceUrlFor(book);
-  element.download = downloadNameFor(book);
+function setProtectedButton(button, { hidden = false, disabled = false, label }) {
+  if (!button) return;
+  button.hidden = hidden;
+  button.disabled = disabled;
+  button.textContent = label;
+}
+
+function renderAccessActions(book) {
+  const access = getBookAccess(book, currentUser);
+  const checking = !readerAccessResolved;
+  const readLabel = checking
+    ? "Checking Access..."
+    : access.canRead ? "Read Full Book" : "Sign In to Read";
+  const downloadLabel = checking
+    ? "Checking Access..."
+    : access.canDownload ? "Download PDF" : "Sign In to Download";
+
+  setProtectedButton(readResourceButton, {
+    hidden: !access.hasResource || !access.canPreview,
+    disabled: checking,
+    label: readLabel
+  });
+  setProtectedButton(readerReadButton, {
+    hidden: !access.hasResource || !access.canPreview,
+    disabled: checking,
+    label: readLabel
+  });
+  setProtectedButton(downloadResourceButton, {
+    hidden: !access.pdfResource || !access.canPreview,
+    disabled: checking,
+    label: downloadLabel
+  });
+  setProtectedButton(readerDownloadButton, {
+    hidden: !access.pdfResource || !access.canPreview,
+    disabled: checking,
+    label: downloadLabel
+  });
+
+  if (!bookAccessMessage) return;
+
+  if (checking) {
+    bookAccessMessage.textContent = "Checking whether you are signed in...";
+  } else if (access.signedIn) {
+    bookAccessMessage.textContent = "You are signed in. Full reading and available PDF downloads are unlocked.";
+  } else if (access.hasResource && access.canPreview) {
+    bookAccessMessage.textContent = "You can read the preview now. Sign in or create an account for the full book and downloads.";
+  } else if (access.canPreview) {
+    bookAccessMessage.textContent = "A preview is available, but this book does not have a full resource link yet.";
+  } else {
+    bookAccessMessage.textContent = "This book is not available to read yet.";
+  }
 }
 
 function fallbackPreviewSections(book) {
@@ -393,7 +427,7 @@ function fallbackPreviewSections(book) {
       heading: "Sample Reading",
       paragraphs: [
         book.description || "This resource is available as part of the Read_Master catalog.",
-        "Read this short preview first. If the topic is useful, download the PDF for the complete resource."
+        "Read this short preview first. If the topic is useful, sign in to open the complete resource."
       ]
     },
     {
@@ -419,7 +453,7 @@ function previewConclusion(book) {
     "readmaster-creative-writing-prompts": "Story practice improves when you write often, build specific details, and let characters want something clearly."
   };
 
-  return conclusions[book.id] || `This preview gives a quick sense of ${book.title}. Download the PDF if the content matches your reading goal.`;
+  return conclusions[book.id] || `This preview gives a quick sense of ${book.title}. Sign in to continue with the complete resource.`;
 }
 
 function renderSectionBody(section) {
@@ -467,16 +501,18 @@ function hideReader() {
 }
 
 function showReader() {
-  if (!currentBook || !canPreviewPdf(currentBook)) return;
+  if (!currentBook || !getBookAccess(currentBook, currentUser).canPreview) return;
 
   readerTitle.textContent = currentBook.title;
-  setDownloadLink(readerDownloadButton, currentBook);
   resourceFrame.innerHTML = renderPreviewContent(currentBook);
   resourceReader.hidden = false;
+  renderAccessActions(currentBook);
   resourceReader.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function openResourceInNewTab() {
+  if (!currentBook || !getBookAccess(currentBook, currentUser).canRead) return;
+
   const resourceUrl = resourceUrlFor(currentBook);
   if (!resourceUrl) return;
 
@@ -484,9 +520,45 @@ function openResourceInNewTab() {
   if (popup) popup.opener = null;
 }
 
+function downloadResource() {
+  if (!currentBook || !getBookAccess(currentBook, currentUser).canDownload) return;
+
+  const link = document.createElement("a");
+  link.href = resourceUrlFor(currentBook);
+  link.download = downloadNameFor(currentBook);
+  link.rel = "noopener";
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+function redirectToReaderLogin() {
+  if (!currentBook) return;
+  window.location.href = buildBookLoginUrl(currentBook.id);
+}
+
+function handleProtectedResourceAction(action) {
+  if (!currentBook || !readerAccessResolved) return;
+
+  const access = getBookAccess(currentBook, currentUser);
+  const allowed = action === "download" ? access.canDownload : access.canRead;
+
+  if (!allowed) {
+    if (!access.signedIn && access.hasResource && access.canPreview) redirectToReaderLogin();
+    return;
+  }
+
+  if (action === "download") {
+    downloadResource();
+  } else {
+    openResourceInNewTab();
+  }
+}
+
 function renderBook(book) {
   currentBook = book;
   document.title = `${book.title} | Read_Master Library`;
+  if (bookAccessMessage) bookAccessMessage.hidden = false;
 
   detailCover.style.setProperty("--cover-bg", categoryTone(book.category));
   detailCover.innerHTML = book.coverUrl
@@ -502,29 +574,21 @@ function renderBook(book) {
   detailReleaseDate.textContent = formatDate(book.releaseDate);
   detailLicense.textContent = book.licenseType || "-";
 
-  const hasResource = Boolean(resourceUrlFor(book));
-  const hasPdfPreview = canPreviewPdf(book);
+  const access = getBookAccess(book, currentUser);
 
   hideReader();
 
-  if (hasResource && isPublishedBook(book)) {
+  if (access.canPreview) {
     previewResourceButton.hidden = false;
     previewResourceButton.disabled = false;
-    previewResourceButton.textContent = hasPdfPreview ? "Read Preview" : "Open Source";
+    previewResourceButton.textContent = "Read Preview";
   } else {
     previewResourceButton.hidden = false;
     previewResourceButton.disabled = true;
-    previewResourceButton.textContent = book.status === "upcoming" ? "Coming Soon" : "No Resource Link";
+    previewResourceButton.textContent = book.status === "upcoming" ? "Coming Soon" : "Preview Unavailable";
   }
 
-  if (hasPdfPreview) {
-    setDownloadLink(downloadResourceButton, book);
-    downloadResourceButton.hidden = false;
-  } else {
-    downloadResourceButton.hidden = true;
-    downloadResourceButton.href = "#";
-    downloadResourceButton.removeAttribute("download");
-  }
+  renderAccessActions(book);
 
   saveBookButton.textContent = isBookSaved(book.id) ? "Saved" : "Save Book";
   saveBookButton.classList.toggle("saved", isBookSaved(book.id));
@@ -537,26 +601,60 @@ function renderMissing(message) {
   detailMeta.textContent = "";
   detailDescription.textContent = "Return to the library and select another resource.";
   previewResourceButton.hidden = true;
+  readResourceButton.hidden = true;
   downloadResourceButton.hidden = true;
+  if (bookAccessMessage) bookAccessMessage.hidden = true;
   saveBookButton.hidden = true;
   hideReader();
 }
 
 previewResourceButton.addEventListener("click", () => {
   if (!currentBook) return;
-  if (canPreviewPdf(currentBook)) {
-    showReader();
-    return;
-  }
-
-  if (isPublishedBook(currentBook)) openResourceInNewTab();
+  showReader();
 });
+
+readResourceButton.addEventListener("click", () => handleProtectedResourceAction("read"));
+downloadResourceButton.addEventListener("click", () => handleProtectedResourceAction("download"));
+readerReadButton.addEventListener("click", () => handleProtectedResourceAction("read"));
+readerDownloadButton.addEventListener("click", () => handleProtectedResourceAction("download"));
 
 saveBookButton.addEventListener("click", () => {
   if (!currentBook) return;
   toggleSavedBook(currentBook.id);
   renderBook(currentBook);
 });
+
+async function resolveReaderAccess() {
+  let timeoutId;
+  const timedOut = Symbol("reader-session-timeout");
+
+  try {
+    const sessionRequest = getCurrentUser();
+    const sessionTimeout = new Promise((resolve) => {
+      timeoutId = window.setTimeout(() => resolve(timedOut), 4000);
+    });
+    const session = await Promise.race([sessionRequest, sessionTimeout]);
+
+    if (session === timedOut) {
+      currentUser = null;
+      sessionRequest
+        .then((lateSession) => {
+          currentUser = lateSession;
+          if (currentBook) renderAccessActions(currentBook);
+        })
+        .catch((error) => console.warn("Reader access could not be verified.", error));
+    } else {
+      currentUser = session;
+    }
+  } catch (error) {
+    currentUser = null;
+    console.warn("Reader access could not be verified.", error);
+  } finally {
+    window.clearTimeout(timeoutId);
+    readerAccessResolved = true;
+    if (currentBook) renderAccessActions(currentBook);
+  }
+}
 
 async function initDetails() {
   if (!bookId) {
@@ -584,4 +682,5 @@ async function initDetails() {
   }
 }
 
+resolveReaderAccess();
 initDetails();

@@ -14,12 +14,6 @@ export const firebaseCollections = {
   users: "users"
 };
 
-export const appSettings = {
-  appName: "Read_Master Library",
-  demoAdminEmail: "admin@example.com",
-  demoAdminPassword: "admin123"
-};
-
 export function hasFirebaseConfig() {
   return Object.values(firebaseConfig).every((value) => {
     return typeof value === "string" && value.trim() && !value.startsWith("YOUR_");

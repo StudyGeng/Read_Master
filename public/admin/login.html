@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Login | Read_Master Library</title>
-  <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="../css/responsive.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/style.css?v=admin-security-1">
+  <link rel="stylesheet" href="../css/responsive.css?v=admin-security-1">
+  <link rel="stylesheet" href="../css/admin.css?v=admin-security-1">
 </head>
 <body class="admin-page auth-page" data-page="admin-login">
   <main class="auth-shell">
@@ -65,14 +65,8 @@
           <button class="btn primary" type="submit">Login</button>
         </form>
 
-        <div class="admin-demo-note" data-admin-demo-note hidden>
-          <span>Demo admin</span>
-          <strong>admin@example.com</strong>
-          <small>Password: admin123</small>
-        </div>
-
         <div class="admin-demo-note" data-live-admin-note hidden>
-          <span>Firebase admin required</span>
+          <span>Protected Firebase admin access</span>
           <strong>Use an account created in Firebase Auth.</strong>
           <small>Auth user alone is not enough. Add its UID as the Firestore `admins` document ID with `active = true`.</small>
         </div>
@@ -86,6 +80,6 @@
   </main>
 
   <script type="module" src="../js/main.js?v=profile-role-2"></script>
-  <script type="module" src="../js/admin-auth.js?v=profile-role-2"></script>
+  <script type="module" src="../js/admin-auth.js?v=admin-security-1"></script>
 </body>
 </html>

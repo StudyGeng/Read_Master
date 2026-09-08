@@ -4,14 +4,24 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
       return request.auth != null
-        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.active == true;
     }
 
-    match /books/{bookId}/{fileName=**} {
-      allow read: if true;
-      allow write: if isAdmin()
+    match /books/{bookId}/{fileName} {
+      allow read: if request.auth != null || fileName.matches('cover-.*');
+      allow create, update: if isAdmin()
         && request.resource.size < 20 * 1024 * 1024;
+      allow delete: if isAdmin();
+    }
+
+    match /profile-images/{userId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
-

@@ -473,7 +473,7 @@ function renderHomeHighlights() {
       variant: "new-release-feature",
       label: "New release",
       heading: "Latest on the shelf",
-      primaryAction: "Read Now"
+      primaryAction: "Preview Book"
     });
   }
 

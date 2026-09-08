@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profile | Read_Master Library</title>
-  <link rel="stylesheet" href="css/style.css?v=profile-role-2">
-  <link rel="stylesheet" href="css/responsive.css?v=profile-role-2">
-  <link rel="stylesheet" href="css/admin.css?v=profile-role-2">
+  <link rel="stylesheet" href="css/style.css?v=profile-settings-1">
+  <link rel="stylesheet" href="css/responsive.css?v=profile-settings-1">
+  <link rel="stylesheet" href="css/admin.css?v=profile-settings-1">
 </head>
 <body data-page="profile">
   <header class="site-header">
@@ -28,7 +28,10 @@
   <main class="app-main profile-main">
     <section class="profile-card reader-profile-card" id="userProfile" aria-live="polite">
       <div class="profile-hero-panel">
-        <div class="profile-avatar" data-user-initials>RM</div>
+        <div class="profile-avatar" data-user-avatar>
+          <img data-user-avatar-image alt="" hidden>
+          <span data-user-initials>RM</span>
+        </div>
         <div>
           <p class="eyebrow" data-profile-kind>Reader profile</p>
           <h1 data-user-name>Reader</h1>
@@ -42,7 +45,7 @@
             <p class="eyebrow">Account</p>
             <h2 data-profile-heading>Your reading space</h2>
           </div>
-          <button class="btn secondary" type="button" data-edit-profile>Edit Profile</button>
+          <button class="btn secondary" type="button" data-edit-profile aria-expanded="false" aria-controls="profileSettings">Edit Profile</button>
         </div>
 
         <dl class="profile-meta">
@@ -54,24 +57,84 @@
             <dt>Saved books</dt>
             <dd data-user-saved-count>0</dd>
           </div>
+          <div data-member-stat>
+            <dt>Member since</dt>
+            <dd data-user-joined>-</dd>
+          </div>
         </dl>
 
-        <form class="profile-edit-form" data-profile-edit-form hidden>
-          <p class="form-message" id="profileMessage" hidden></p>
-          <label class="field">
-            <span>Display name</span>
-            <input name="name" type="text" autocomplete="name" required data-profile-name-input>
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input name="email" type="email" readonly data-profile-email-input>
-            <small class="field-hint">Email is managed by your login account.</small>
-          </label>
-          <div class="action-row">
-            <button class="btn primary" type="submit">Save Changes</button>
-            <button class="btn secondary" type="button" data-cancel-edit>Cancel</button>
-          </div>
-        </form>
+        <section class="profile-settings-panel" id="profileSettings" data-profile-settings hidden aria-label="Profile settings">
+          <form class="profile-edit-form" data-profile-edit-form>
+            <div class="profile-form-heading">
+              <h3>Profile information</h3>
+              <p>Update the name and photo shown on your reader profile.</p>
+            </div>
+            <p class="form-message" id="profileMessage" hidden></p>
+
+            <div class="profile-photo-editor" data-reader-photo-field>
+              <div class="profile-avatar profile-avatar-preview" data-profile-avatar-preview>
+                <img data-profile-avatar-image alt="Profile photo preview" hidden>
+                <span data-profile-avatar-initials>RM</span>
+              </div>
+              <div class="profile-photo-actions">
+                <label class="btn secondary profile-photo-picker">
+                  Choose Photo
+                  <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" data-profile-photo-input>
+                </label>
+                <button class="btn secondary" type="button" data-remove-profile-photo>Remove Photo</button>
+                <small class="field-hint">JPG, PNG, or WebP. Maximum size: 2 MB.</small>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>Display name</span>
+              <input name="name" type="text" autocomplete="name" required maxlength="80" data-profile-name-input>
+            </label>
+
+            <button class="btn primary" type="submit">Save Profile</button>
+          </form>
+
+          <form class="profile-edit-form" data-email-change-form data-reader-account-form>
+            <div class="profile-form-heading">
+              <h3>Change email</h3>
+              <p>We will send a confirmation link to the new address.</p>
+            </div>
+            <p class="form-message" id="profileEmailMessage" hidden></p>
+            <label class="field">
+              <span>New email</span>
+              <input name="email" type="email" autocomplete="email" required data-profile-email-input>
+            </label>
+            <label class="field">
+              <span>Current password</span>
+              <input name="currentPassword" type="password" autocomplete="current-password" required minlength="6">
+            </label>
+            <button class="btn primary" type="submit">Send Verification</button>
+          </form>
+
+          <form class="profile-edit-form" data-password-change-form data-reader-account-form>
+            <div class="profile-form-heading">
+              <h3>Change password</h3>
+              <p>Confirm your current password before choosing a new one.</p>
+            </div>
+            <p class="form-message" id="profilePasswordMessage" hidden></p>
+            <label class="field">
+              <span>Current password</span>
+              <input name="currentPassword" type="password" autocomplete="current-password" required minlength="6">
+            </label>
+            <label class="field">
+              <span>New password</span>
+              <input name="newPassword" type="password" autocomplete="new-password" required minlength="8">
+            </label>
+            <label class="field">
+              <span>Confirm new password</span>
+              <input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8">
+            </label>
+            <button class="btn primary" type="submit">Update Password</button>
+          </form>
+
+          <p class="profile-security-note" data-demo-security-note hidden>Email and password changes require Firebase Authentication.</p>
+          <button class="btn secondary" type="button" data-cancel-edit>Close Settings</button>
+        </section>
 
         <div class="action-row">
           <a class="btn primary" href="reading-list.html" data-reader-action>Reading List</a>
@@ -103,7 +166,7 @@
     </p>
   </footer>
 
-  <script type="module" src="js/main.js?v=profile-role-2"></script>
-  <script type="module" src="js/user-profile.js?v=profile-role-2"></script>
+  <script type="module" src="js/main.js?v=profile-settings-1"></script>
+  <script type="module" src="js/user-profile.js?v=profile-settings-1"></script>
 </body>
 </html>

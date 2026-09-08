@@ -27,7 +27,7 @@ export const firebaseConfig = {
 
 Enable email/password sign-in in Firebase Authentication.
 
-Create the admin user account.
+Create the admin user account with a private email and password. Do not add that password to this repository or any public HTML/JavaScript file.
 
 ## 3. Create Admin Permission Document
 
@@ -44,7 +44,7 @@ Fields:
 
 ```text
 active: true
-email: admin@example.com
+email: your-admin@email.com
 name: Admin
 ```
 
@@ -74,13 +74,25 @@ Deploy or copy the rules from:
 firebase/storage.rules
 ```
 
-## 6. Test
+Storage is also used for reader profile photos. The included rule limits photos to the account owner, accepted image formats, and files smaller than 2 MB.
+
+## 6. Deploy Hosting and Rules
+
+From the project directory, run:
+
+```bash
+npx firebase-tools deploy --only hosting,firestore,storage --project read-master-library
+```
+
+## 7. Test
 
 Test these flows:
 
 - Public user can view published or upcoming books only after the admin legal check is confirmed.
 - Public user cannot add, edit, or delete books.
 - User can sign in or create an account.
+- User can update their display name and profile photo.
+- User can request a verified email change and change their password after entering their current password.
 - Admin can log in.
 - Admin can add new released books after checking the legal source/license confirmation.
 - Admin can edit and delete books.

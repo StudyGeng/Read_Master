@@ -1,4 +1,4 @@
-import { appSettings, firebaseCollections, firebaseConfig, hasFirebaseConfig } from "./firebase-config.js";
+import { firebaseCollections, firebaseConfig, hasFirebaseConfig } from "./firebase-config.js";
 import { sampleBooks } from "./sample-data.js";
 
 const firebaseSdkVersion = "10.12.5";
@@ -7,7 +7,7 @@ const usersKey = "readmaster:users";
 const readingListKey = "readmaster:reading-list";
 const sampleDataVersionKey = "readmaster:sample-data-version";
 const sampleDataVersion = "8";
-const adminSessionKey = "readmaster:demo-admin-session";
+const adminSessionKey = "readmaster:admin-session";
 const userSessionKey = "readmaster:demo-user-session";
 const forceDemoMode = globalThis.process?.env?.READ_MASTER_DEMO_MODE === "1";
 const configured = hasFirebaseConfig() && !forceDemoMode;
@@ -23,6 +23,8 @@ const allowedLicenseTypeValues = [
   "Author-approved"
 ];
 const allowedLicenseTypes = new Set(allowedLicenseTypeValues);
+const profilePhotoMaxBytes = 2 * 1024 * 1024;
+const profilePhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const sampleBookIds = new Set(sampleBooks.map((book) => book.id));
 
 let firebasePromise;
@@ -308,18 +310,60 @@ async function uploadBookFile(bookId, file, type) {
   return storageModule.getDownloadURL(storageRef);
 }
 
+function validateProfilePhoto(file) {
+  if (!file) return;
+  if (!profilePhotoTypes.has(file.type)) {
+    throw new Error("Profile photos must be JPG, PNG, or WebP images.");
+  }
+  if (file.size > profilePhotoMaxBytes) {
+    throw new Error("Profile photos must be smaller than 2 MB.");
+  }
+}
+
+function profilePhotoDataUrl(file) {
+  validateProfilePhoto(file);
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")), { once: true });
+    reader.addEventListener("error", () => reject(new Error("The selected profile photo could not be read.")), { once: true });
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadProfilePhoto(firebase, userId, file) {
+  validateProfilePhoto(file);
+  const storageModule = await import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-storage.js`);
+  const storage = storageModule.getStorage(firebase.app);
+  const path = `profile-images/${userId}/avatar-${Date.now()}-${safeFileName(file.name)}`;
+  const storageRef = storageModule.ref(storage, path);
+
+  await storageModule.uploadBytes(storageRef, file, { contentType: file.type });
+  return {
+    photoURL: await storageModule.getDownloadURL(storageRef),
+    photoPath: path
+  };
+}
+
+async function deleteProfilePhoto(firebase, photoPath) {
+  if (!photoPath) return;
+
+  const storageModule = await import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-storage.js`);
+  const storage = storageModule.getStorage(firebase.app);
+
+  try {
+    await storageModule.deleteObject(storageModule.ref(storage, photoPath));
+  } catch (error) {
+    if (error?.code !== "storage/object-not-found") throw error;
+  }
+}
+
 async function getAdminDoc(uid) {
   const firebase = await getFirebase();
   const { db, firestoreModule } = firebase;
   return firestoreModule.getDoc(
     firestoreModule.doc(db, firebaseCollections.admins, uid)
   );
-}
-
-async function isAdminUser(uid) {
-  if (!uid) return false;
-  const adminDoc = await getAdminDoc(uid);
-  return adminDoc.exists() && adminDoc.data().active !== false;
 }
 
 async function getAdminAccessStatus(uid) {
@@ -352,15 +396,22 @@ async function getAdminAccessStatus(uid) {
   };
 }
 
-function normalizeUser(user, fallbackName = "") {
+function normalizeUser(user, fallbackProfile = {}) {
   if (!user) return null;
+
+  const fallback = typeof fallbackProfile === "string"
+    ? { name: fallbackProfile }
+    : fallbackProfile || {};
 
   return {
     uid: user.uid,
     email: user.email || "",
-    name: user.displayName || fallbackName || user.email?.split("@")[0] || "Reader",
+    name: user.displayName || fallback.name || user.email?.split("@")[0] || "Reader",
+    photoURL: user.photoURL || fallback.photoURL || "",
+    photoPath: fallback.photoPath || "",
     role: "user",
-    joinedAt: user.joinedAt || "",
+    joinedAt: user.metadata?.creationTime || user.joinedAt || fallback.joinedAt || "",
+    emailVerified: Boolean(user.emailVerified),
     demo: Boolean(user.demo)
   };
 }
@@ -372,6 +423,8 @@ function demoUserSession(email = "reader@example.com", name = "Read_Master Reade
     uid: `demo-user-${cleanEmail}`,
     email: cleanEmail,
     name: name || cleanEmail.split("@")[0] || "Read_Master Reader",
+    photoURL: "",
+    photoPath: "",
     role: "user",
     joinedAt: "2026-09-04",
     demo: true
@@ -391,6 +444,8 @@ function normalizeManagedUser(data, id = data.uid || data.id) {
     id,
     name: data.name || data.displayName || data.email?.split("@")[0] || "Reader",
     email: data.email || "",
+    photoURL: data.photoURL || "",
+    photoPath: data.photoPath || "",
     role: data.role || "user",
     joinedAt: timestampToDateInput(data.joinedAt || data.createdAt) || "2026-09-04",
     demo: Boolean(data.demo)
@@ -535,26 +590,37 @@ function upsertLocalUser(session) {
 }
 
 function saveFirebaseUserProfile(firebase, session, options = {}) {
-  if (!firebase || !session?.uid) return;
+  if (!firebase || !session?.uid) return Promise.resolve();
 
   const { db, firestoreModule } = firebase;
   const now = firestoreModule.serverTimestamp();
   const payload = {
     name: session.name || session.email?.split("@")[0] || "Reader",
     email: session.email || "",
+    photoURL: session.photoURL || "",
+    photoPath: session.photoPath || "",
     role: "user",
     updatedAt: now
   };
 
   if (options.created) payload.createdAt = now;
 
-  firestoreModule.setDoc(
+  return firestoreModule.setDoc(
     firestoreModule.doc(db, firebaseCollections.users, session.uid),
     payload,
     { merge: true }
-  ).catch((error) => {
-    console.warn("Firebase user profile document could not be saved.", error);
-  });
+  );
+}
+
+async function loadFirebaseUserProfile(firebase, userId) {
+  if (!firebase || !userId) return {};
+
+  const { db, firestoreModule } = firebase;
+  const profileDoc = await firestoreModule.getDoc(
+    firestoreModule.doc(db, firebaseCollections.users, userId)
+  );
+
+  return profileDoc.exists() ? profileDoc.data() : {};
 }
 
 async function waitForFirebaseAuthUser(firebase) {
@@ -915,7 +981,9 @@ export async function registerUser(name, email, password) {
   authModule.updateProfile(credential.user, { displayName: cleanName }).catch((error) => {
     console.warn("Firebase Auth profile name could not be updated.", error);
   });
-  saveFirebaseUserProfile(firebase, session, { created: true });
+  saveFirebaseUserProfile(firebase, session, { created: true }).catch((error) => {
+    console.warn("Firebase user profile document could not be saved.", error);
+  });
   syncSavedBooksSilently(credential.user.uid, firebase);
   return session;
 }
@@ -941,11 +1009,25 @@ export async function loginUser(email, password) {
   const { auth, authModule } = firebase;
   const credential = await authModule.signInWithEmailAndPassword(auth, cleanEmail, password);
 
-  const session = normalizeUser(credential.user);
+  let cloudProfile = null;
+  try {
+    cloudProfile = await withTimeout(
+      loadFirebaseUserProfile(firebase, credential.user.uid),
+      "Firebase user profile"
+    );
+  } catch (error) {
+    console.warn("Firebase user profile could not be loaded during login.", error);
+  }
+
+  const session = normalizeUser(credential.user, cloudProfile || {});
   clearCachedAdminSession();
   storeUserSession(session);
   upsertLocalUser(session);
-  saveFirebaseUserProfile(firebase, session);
+  if (cloudProfile !== null) {
+    saveFirebaseUserProfile(firebase, session).catch((error) => {
+      console.warn("Firebase user profile document could not be saved.", error);
+    });
+  }
   syncSavedBooksSilently(credential.user.uid, firebase);
   return session;
 }
@@ -971,9 +1053,46 @@ export async function getCurrentUser() {
   }
 
   const cachedSession = readUserSession();
-  const fallbackName = cachedSession?.uid === user?.uid ? cachedSession.name : "";
-  const session = normalizeUser(user, fallbackName);
+  const cacheMatchesUser = cachedSession?.uid === user.uid;
+  let fallbackProfile = cacheMatchesUser ? cachedSession : {};
+  let profileCanSync = true;
+
+  if (!cacheMatchesUser || (user.photoURL && !fallbackProfile.photoPath)) {
+    try {
+      const cloudProfile = await withTimeout(
+        loadFirebaseUserProfile(firebase, user.uid),
+        "Firebase user profile"
+      );
+      fallbackProfile = {
+        ...cloudProfile,
+        ...(cacheMatchesUser ? cachedSession : {})
+      };
+      if (!fallbackProfile.photoPath && cloudProfile.photoPath) {
+        fallbackProfile.photoPath = cloudProfile.photoPath;
+      }
+    } catch (error) {
+      profileCanSync = false;
+      console.warn("Firebase user profile could not be loaded.", error);
+    }
+  }
+
+  const session = normalizeUser(user, fallbackProfile);
   storeUserSession(session);
+  upsertLocalUser(session);
+
+  const profileChanged = !cachedSession
+    || cachedSession.uid !== session.uid
+    || cachedSession.name !== session.name
+    || cachedSession.email !== session.email
+    || cachedSession.photoURL !== session.photoURL
+    || cachedSession.photoPath !== session.photoPath;
+
+  if (profileChanged && profileCanSync) {
+    saveFirebaseUserProfile(firebase, session).catch((error) => {
+      console.warn("Firebase user profile document could not be synchronized.", error);
+    });
+  }
+
   return session;
 }
 
@@ -988,17 +1107,32 @@ export async function logoutUser() {
   storeUserSession(null);
 }
 
-export async function updateUserProfile(name) {
-  const cleanName = String(name || "").trim();
+export async function updateUserProfile(profileData, photoFile = null) {
+  const profile = typeof profileData === "string"
+    ? { name: profileData }
+    : profileData || {};
+  const cleanName = String(profile.name || "").trim();
   if (!cleanName) throw new Error("Please enter a display name.");
+  if (cleanName.length > 80) throw new Error("Display names must be 80 characters or fewer.");
+
+  validateProfilePhoto(photoFile);
+  const removePhoto = Boolean(profile.removePhoto);
 
   if (!configured) {
     const currentSession = readUserSession();
     if (!currentSession) throw new Error("Please sign in first.");
 
+    const photoURL = photoFile
+      ? await profilePhotoDataUrl(photoFile)
+      : removePhoto
+        ? ""
+        : currentSession.photoURL || "";
+
     const updatedSession = {
       ...currentSession,
-      name: cleanName
+      name: cleanName,
+      photoURL,
+      photoPath: ""
     };
 
     upsertLocalUser(updatedSession);
@@ -1007,23 +1141,135 @@ export async function updateUserProfile(name) {
   }
 
   const firebase = await getFirebase();
-  const { auth, authModule, db, firestoreModule } = firebase;
+  const { auth, authModule } = firebase;
   const currentUser = auth.currentUser || await getFirebaseAuthUser(firebase);
   if (!currentUser) throw new Error("Please sign in first.");
 
+  const cachedSession = readUserSession();
+  let previousProfile = cachedSession?.uid === currentUser.uid ? cachedSession : {};
+  if (currentUser.photoURL && !previousProfile.photoPath) {
+    try {
+      const cloudProfile = await loadFirebaseUserProfile(firebase, currentUser.uid);
+      previousProfile = {
+        ...cloudProfile,
+        ...previousProfile,
+        photoPath: previousProfile.photoPath || cloudProfile.photoPath || ""
+      };
+    } catch (error) {
+      console.warn("The existing profile photo record could not be loaded.", error);
+    }
+  }
+  const previousPhotoPath = previousProfile.photoPath || "";
+  let nextPhotoURL = currentUser.photoURL || previousProfile.photoURL || "";
+  let nextPhotoPath = previousPhotoPath;
+  let uploadedPhoto = null;
+  const previousAuthName = currentUser.displayName;
+  const previousAuthPhotoURL = currentUser.photoURL;
+  let authProfileUpdated = false;
+
+  if (photoFile) {
+    uploadedPhoto = await uploadProfilePhoto(firebase, currentUser.uid, photoFile);
+    nextPhotoURL = uploadedPhoto.photoURL;
+    nextPhotoPath = uploadedPhoto.photoPath;
+  } else if (removePhoto) {
+    nextPhotoURL = "";
+    nextPhotoPath = "";
+  }
+
   const updatedSession = {
-    ...normalizeUser(currentUser, cleanName),
-    name: cleanName
+    ...normalizeUser(currentUser, previousProfile),
+    name: cleanName,
+    photoURL: nextPhotoURL,
+    photoPath: nextPhotoPath
   };
+
+  try {
+    await authModule.updateProfile(currentUser, {
+      displayName: cleanName,
+      photoURL: nextPhotoURL || null
+    });
+    authProfileUpdated = true;
+    await saveFirebaseUserProfile(firebase, updatedSession);
+  } catch (error) {
+    let authProfileRolledBack = !authProfileUpdated;
+
+    if (authProfileUpdated) {
+      try {
+        await authModule.updateProfile(currentUser, {
+          displayName: previousAuthName || null,
+          photoURL: previousAuthPhotoURL || null
+        });
+        authProfileRolledBack = true;
+      } catch (rollbackError) {
+        console.warn("Firebase Auth profile rollback failed.", rollbackError);
+        storeUserSession(updatedSession);
+        upsertLocalUser(updatedSession);
+      }
+    }
+
+    if (uploadedPhoto?.photoPath && authProfileRolledBack) {
+      deleteProfilePhoto(firebase, uploadedPhoto.photoPath).catch(() => {});
+    }
+    throw error;
+  }
 
   storeUserSession(updatedSession);
   upsertLocalUser(updatedSession);
-  authModule.updateProfile(currentUser, { displayName: cleanName }).catch((error) => {
-    console.warn("Firebase Auth profile name could not be updated.", error);
-  });
-  saveFirebaseUserProfile(firebase, updatedSession);
+
+  if (previousPhotoPath && previousPhotoPath !== nextPhotoPath) {
+    deleteProfilePhoto(firebase, previousPhotoPath).catch((error) => {
+      console.warn("The previous profile photo could not be removed.", error);
+    });
+  }
 
   return updatedSession;
+}
+
+async function reauthenticatePasswordUser(firebase, currentPassword) {
+  const password = String(currentPassword || "");
+  if (!password) throw new Error("Please enter your current password.");
+
+  const { auth, authModule } = firebase;
+  const currentUser = auth.currentUser || await getFirebaseAuthUser(firebase);
+  if (!currentUser?.email) throw new Error("Please sign in with your email and password first.");
+
+  const usesPassword = currentUser.providerData?.some((provider) => provider.providerId === "password");
+  if (currentUser.providerData?.length && !usesPassword) {
+    throw new Error("This account does not use an email/password sign-in method.");
+  }
+
+  const credential = authModule.EmailAuthProvider.credential(currentUser.email, password);
+  await authModule.reauthenticateWithCredential(currentUser, credential);
+  return currentUser;
+}
+
+export async function requestUserEmailChange(email, currentPassword) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes("@")) throw new Error("Please enter a valid new email address.");
+  if (!configured) throw new Error("Email changes require Firebase Authentication.");
+
+  const firebase = await getFirebase();
+  const currentUser = await reauthenticatePasswordUser(firebase, currentPassword);
+  if (currentUser.email?.toLowerCase() === cleanEmail) {
+    throw new Error("Please enter a different email address.");
+  }
+
+  const continueUrl = new URL("profile.html", window.location.href).href;
+  await firebase.authModule.verifyBeforeUpdateEmail(currentUser, cleanEmail, {
+    url: continueUrl
+  });
+
+  return { email: cleanEmail };
+}
+
+export async function changeUserPassword(currentPassword, newPassword) {
+  const password = String(newPassword || "");
+  if (password.length < 8) throw new Error("Your new password must contain at least 8 characters.");
+  if (!configured) throw new Error("Password changes require Firebase Authentication.");
+
+  const firebase = await getFirebase();
+  const currentUser = await reauthenticatePasswordUser(firebase, currentPassword);
+  await firebase.authModule.updatePassword(currentUser, password);
 }
 
 export async function updateAdminProfile(name) {
@@ -1031,16 +1277,7 @@ export async function updateAdminProfile(name) {
   if (!cleanName) throw new Error("Please enter a display name.");
 
   if (!configured) {
-    const currentSession = readAdminSession();
-    if (!currentSession) throw new Error("Please sign in as admin first.");
-
-    const updatedSession = {
-      ...currentSession,
-      name: cleanName
-    };
-
-    storeAdminSession(updatedSession);
-    return updatedSession;
+    throw new Error("Admin access requires Firebase Authentication.");
   }
 
   const firebase = await getFirebase();
@@ -1055,6 +1292,7 @@ export async function updateAdminProfile(name) {
     uid: currentUser.uid,
     email: currentUser.email || "",
     name: cleanName,
+    photoURL: currentUser.photoURL || "",
     role: "admin",
     demo: false
   };
@@ -1183,32 +1421,24 @@ export async function deleteUser(userId) {
 
 export async function loginAdmin(email, password) {
   if (!configured) {
-    const matchesDemoLogin = email.trim().toLowerCase() === appSettings.demoAdminEmail
-      && password === appSettings.demoAdminPassword;
-
-    if (!matchesDemoLogin) {
-      throw new Error("Invalid demo admin email or password.");
-    }
-
-    const session = {
-      uid: "demo-admin",
-      email: appSettings.demoAdminEmail,
-      name: "Read_Master Admin",
-      role: "admin",
-      demo: true
-    };
-
-    clearCachedUserSession();
-    storeAdminSession(session);
-    return session;
+    throw new Error("Admin access requires Firebase Authentication.");
   }
 
   const firebase = await getFirebase();
   const { auth, authModule } = firebase;
   const credential = await authModule.signInWithEmailAndPassword(auth, email, password);
-  const adminStatus = await getAdminAccessStatus(credential.user.uid);
+  let adminStatus;
+
+  try {
+    adminStatus = await getAdminAccessStatus(credential.user.uid);
+  } catch (error) {
+    clearCachedAdminSession();
+    await authModule.signOut(auth).catch(() => {});
+    throw error;
+  }
 
   if (!adminStatus.allowed) {
+    clearCachedAdminSession();
     await authModule.signOut(auth);
     throw new Error(adminStatus.reason);
   }
@@ -1217,6 +1447,7 @@ export async function loginAdmin(email, password) {
     uid: credential.user.uid,
     email: credential.user.email,
     name: adminStatus.data?.name || credential.user.displayName || "Library Admin",
+    photoURL: credential.user.photoURL || "",
     role: "admin",
     demo: false
   };
@@ -1228,7 +1459,8 @@ export async function loginAdmin(email, password) {
 
 export async function getCurrentAdmin() {
   if (!configured) {
-    return readLocal(adminSessionKey, null);
+    storeAdminSession(null);
+    return null;
   }
 
   const firebase = await getFirebase();
@@ -1241,11 +1473,17 @@ export async function getCurrentAdmin() {
     return null;
   }
 
-  const adminStatus = await withTimeout(
-    getAdminAccessStatus(user.uid),
-    "Firestore admin permission check",
-    3200
-  );
+  let adminStatus;
+  try {
+    adminStatus = await withTimeout(
+      getAdminAccessStatus(user.uid),
+      "Firestore admin permission check",
+      3200
+    );
+  } catch (error) {
+    storeAdminSession(null);
+    throw error;
+  }
   if (!adminStatus.allowed) {
     storeAdminSession(null);
     return null;
@@ -1255,6 +1493,7 @@ export async function getCurrentAdmin() {
     uid: user.uid,
     email: user.email,
     name: adminStatus.data?.name || user.displayName || "Library Admin",
+    photoURL: user.photoURL || "",
     role: "admin",
     demo: false
   };
