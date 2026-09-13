@@ -6,7 +6,7 @@
   <title>Admin Dashboard | Read_Master Library</title>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/responsive.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/admin.css?v=notifications-1">
 </head>
 <body class="admin-page" data-admin-page="dashboard">
   <header class="admin-header">
@@ -99,6 +99,77 @@
       </article>
     </section>
 
+    <section class="admin-section admin-notifications-section" aria-labelledby="adminNotificationsHeading">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Reader communication</p>
+          <h2 id="adminNotificationsHeading">Notification updates</h2>
+        </div>
+        <span class="chart-chip">Notification bell</span>
+      </div>
+
+      <div class="admin-notification-layout">
+        <form class="data-form admin-notification-form" id="adminNotificationForm">
+          <div class="panel-heading">
+            <h3>Create an update</h3>
+            <p>Publish library news that readers can open from the notification bell.</p>
+          </div>
+
+          <label class="field">
+            Title
+            <input name="title" type="text" maxlength="80" autocomplete="off" required placeholder="New books are available">
+          </label>
+
+          <label class="field">
+            Message
+            <textarea name="message" minlength="3" maxlength="400" required placeholder="Tell readers what has changed."></textarea>
+            <span class="field-hint">3 to 400 characters.</span>
+          </label>
+
+          <div class="admin-notification-fields">
+            <label class="field">
+              Update type
+              <select name="kind" required>
+                <option value="announcement">Announcement</option>
+                <option value="new-book">New book</option>
+                <option value="maintenance">Service update</option>
+              </select>
+            </label>
+
+            <label class="field">
+              Read_Master page link (optional)
+              <input name="linkUrl" type="text" maxlength="500" autocomplete="off" placeholder="book-details.html?id=book-id">
+            </label>
+          </div>
+
+          <label class="check-field admin-notification-active-field">
+            <input name="active" type="checkbox" checked>
+            <span>Show this update to readers immediately.</span>
+          </label>
+
+          <p class="form-message" id="notificationMessage" role="status" aria-live="polite" hidden></p>
+
+          <div class="admin-notification-submit-row">
+            <button class="btn primary" type="submit">Create Update</button>
+          </div>
+        </form>
+
+        <div class="admin-notification-manager" aria-live="polite">
+          <div class="admin-notification-manager-heading">
+            <div>
+              <h3>Previous updates</h3>
+              <p>Deactivate an update to hide it from readers without deleting it.</p>
+            </div>
+            <strong id="adminNotificationCount">0</strong>
+          </div>
+
+          <div class="admin-notification-feed" id="adminNotificationsList">
+            <p class="loading-text">Loading notifications...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="admin-section">
       <div class="section-header">
         <div>
@@ -159,6 +230,6 @@
   </main>
 
   <script type="module" src="../js/main.js?v=profile-role-2"></script>
-  <script type="module" src="../js/admin-books.js?v=dashboard-local-1"></script>
+  <script type="module" src="../js/admin-books.js?v=notifications-1"></script>
 </body>
 </html>

@@ -1,7 +1,27 @@
-import { getBook, getCachedBook, getCurrentUser, isPublicBook } from "./firebase-service.js";
+import {
+  deleteBookReview,
+  getBook,
+  getCachedBook,
+  getCurrentUser,
+  isPublicBook,
+  listBookReviews,
+  recordBookInteraction,
+  saveBookReview
+} from "./firebase-service.js";
 import { buildBookLoginUrl, getBookAccess } from "./book-access.js";
+import { recordBookActivity } from "./library-store.js";
 import { isBookSaved, toggleSavedBook } from "./reading-store.js";
-import { $, categoryTone, escapeAttribute, escapeHtml, formatDate, getQueryParam, initialsFromTitle } from "./utils.js";
+import {
+  $,
+  categoryTone,
+  clearMessage,
+  escapeAttribute,
+  escapeHtml,
+  formatDate,
+  getQueryParam,
+  initialsFromTitle,
+  setMessage
+} from "./utils.js";
 
 const bookId = getQueryParam("id");
 const detailCover = $("#detailCover");
@@ -14,6 +34,8 @@ const detailFormat = $("#detailFormat");
 const detailLanguage = $("#detailLanguage");
 const detailReleaseDate = $("#detailReleaseDate");
 const detailLicense = $("#detailLicense");
+const detailViews = $("#detailViews");
+const detailDownloads = $("#detailDownloads");
 const previewResourceButton = $("#previewResourceButton");
 const readResourceButton = $("#readResourceButton");
 const downloadResourceButton = $("#downloadResourceButton");
@@ -24,10 +46,23 @@ const readerTitle = $("#readerTitle");
 const readerReadButton = $("#readerReadButton");
 const readerDownloadButton = $("#readerDownloadButton");
 const saveBookButton = $("#saveBookButton");
+const bookReviews = $("#bookReviews");
+const reviewSummary = $("#reviewSummary");
+const reviewAuthPrompt = $("#reviewAuthPrompt");
+const reviewLoginLink = $("#reviewLoginLink");
+const reviewForm = $("#reviewForm");
+const reviewMessage = $("#reviewMessage");
+const reviewSubmitButton = $("#reviewSubmitButton");
+const reviewCancelButton = $("#reviewCancelButton");
+const reviewsList = $("#reviewsList");
 
 let currentBook = null;
 let currentUser = null;
 let readerAccessResolved = false;
+let readerIdentityResolved = false;
+let currentReviews = [];
+let reviewsLoadedFor = "";
+let trackedOpenFor = "";
 
 const demoPreviewSections = {
   "readmaster-study-skills-starter": [
@@ -421,6 +456,148 @@ function renderAccessActions(book) {
   }
 }
 
+function formatMetric(value) {
+  return new Intl.NumberFormat().format(Math.max(0, Number(value) || 0));
+}
+
+function renderFavoriteButton(book) {
+  if (!saveBookButton || !book?.id) return;
+  const saved = isBookSaved(book.id);
+  saveBookButton.textContent = saved ? "Favorited" : "Add to Favorites";
+  saveBookButton.classList.toggle("saved", saved);
+  saveBookButton.setAttribute("aria-pressed", String(saved));
+}
+
+function ownReview() {
+  if (!currentUser?.uid) return null;
+  return currentReviews.find((review) => review.userId === currentUser.uid) || null;
+}
+
+function friendlyReviewError(error, fallbackMessage) {
+  const code = String(error?.code || "").toLowerCase();
+  const message = String(error?.message || "").trim();
+  const permissionDenied = code.includes("permission-denied")
+    || message.toLowerCase().includes("missing or insufficient permissions");
+
+  if (permissionDenied) {
+    return "Reviews are not enabled for this book yet. Ask an admin to publish the latest Firestore rules and ensure this book is published in the online catalog.";
+  }
+
+  return message || fallbackMessage;
+}
+
+function renderReviewComposer() {
+  if (!reviewForm || !reviewAuthPrompt) return;
+
+  const signedIn = Boolean(currentUser?.uid);
+  const existingReview = ownReview();
+  reviewForm.hidden = !signedIn;
+  reviewAuthPrompt.hidden = signedIn;
+
+  if (reviewLoginLink && currentBook) {
+    reviewLoginLink.href = buildBookLoginUrl(currentBook.id);
+  }
+
+  if (!signedIn) return;
+
+  reviewForm.elements.rating.value = String(existingReview?.rating || 5);
+  reviewForm.elements.comment.value = existingReview?.comment || "";
+  reviewSubmitButton.textContent = existingReview ? "Update Review" : "Post Review";
+  reviewCancelButton.hidden = !existingReview;
+}
+
+function renderReviews() {
+  if (!reviewsList || !reviewSummary) return;
+
+  const count = currentReviews.length;
+  const average = count
+    ? currentReviews.reduce((total, review) => total + Number(review.rating || 0), 0) / count
+    : 0;
+  reviewSummary.textContent = count
+    ? `${average.toFixed(1)} / 5 from ${count} ${count === 1 ? "review" : "reviews"}`
+    : "No reviews yet";
+
+  if (!count) {
+    reviewsList.innerHTML = `<p class="empty-state">Be the first reader to review this book.</p>`;
+    renderReviewComposer();
+    return;
+  }
+
+  reviewsList.innerHTML = currentReviews.map((review) => {
+    const canDelete = currentUser?.uid === review.userId;
+    const dateValue = review.updatedAt || review.createdAt || "";
+    const reviewerName = review.userName || "Reader";
+    const reviewerProfile = review.userId
+      ? `<a class="review-author-link" href="profile.html?uid=${escapeAttribute(encodeURIComponent(review.userId))}" aria-label="View ${escapeAttribute(reviewerName)}'s reader profile">${escapeHtml(reviewerName)}</a>`
+      : escapeHtml(reviewerName);
+    return `
+      <article class="review-card">
+        <div class="review-card-heading">
+          <div>
+            <strong>${reviewerProfile}</strong>
+            <span class="review-rating" aria-label="${escapeAttribute(`${review.rating} out of 5 stars`)}">${escapeHtml(`${review.rating} / 5`)}</span>
+          </div>
+          <time datetime="${escapeAttribute(dateValue)}">${escapeHtml(formatDate(dateValue))}</time>
+        </div>
+        <p>${escapeHtml(review.comment)}</p>
+        ${canDelete ? `
+          <div class="review-actions">
+            <button class="btn secondary" type="button" data-delete-review>Delete My Review</button>
+          </div>
+        ` : ""}
+      </article>
+    `;
+  }).join("");
+
+  renderReviewComposer();
+}
+
+async function loadReviewsForBook(book) {
+  if (!book?.id || reviewsLoadedFor === book.id) return;
+  reviewsLoadedFor = book.id;
+
+  try {
+    currentReviews = await listBookReviews(book.id);
+    renderReviews();
+  } catch (error) {
+    reviewsLoadedFor = "";
+    reviewsList.innerHTML = `<p class="empty-state">${escapeHtml(error.message || "Reviews could not be loaded.")}</p>`;
+    renderReviewComposer();
+  }
+}
+
+function trackBookOpenIfReady() {
+  if (!readerIdentityResolved || !currentBook?.id || trackedOpenFor === currentBook.id) return;
+  trackedOpenFor = currentBook.id;
+  recordBookActivity(currentBook.id, "opened");
+  if (String(currentBook.status || "").toLowerCase() !== "published") return;
+
+  recordBookInteraction(currentBook.id, "view")
+    .then((updatedBook) => {
+      if (!updatedBook || currentBook?.id !== updatedBook.id) return;
+      currentBook = { ...currentBook, ...updatedBook };
+      detailViews.textContent = formatMetric(currentBook.viewCount);
+      detailDownloads.textContent = formatMetric(currentBook.downloadCount);
+    })
+    .catch((error) => console.warn("Book view could not be counted.", error));
+}
+
+function recordReadActivity() {
+  if (currentBook?.id) recordBookActivity(currentBook.id, "read");
+}
+
+function recordDownloadActivity() {
+  if (!currentBook?.id) return;
+  recordBookActivity(currentBook.id, "downloaded");
+  recordBookInteraction(currentBook.id, "download")
+    .then((updatedBook) => {
+      if (!updatedBook || currentBook?.id !== updatedBook.id) return;
+      currentBook = { ...currentBook, ...updatedBook };
+      detailDownloads.textContent = formatMetric(currentBook.downloadCount);
+    })
+    .catch((error) => console.warn("Book download could not be counted.", error));
+}
+
 function fallbackPreviewSections(book) {
   return [
     {
@@ -503,6 +680,7 @@ function hideReader() {
 function showReader() {
   if (!currentBook || !getBookAccess(currentBook, currentUser).canPreview) return;
 
+  recordReadActivity();
   readerTitle.textContent = currentBook.title;
   resourceFrame.innerHTML = renderPreviewContent(currentBook);
   resourceReader.hidden = false;
@@ -516,6 +694,7 @@ function openResourceInNewTab() {
   const resourceUrl = resourceUrlFor(currentBook);
   if (!resourceUrl) return;
 
+  recordReadActivity();
   const popup = window.open(resourceUrl, "_blank", "noopener");
   if (popup) popup.opener = null;
 }
@@ -530,6 +709,7 @@ function downloadResource() {
   document.body.append(link);
   link.click();
   link.remove();
+  recordDownloadActivity();
 }
 
 function redirectToReaderLogin() {
@@ -573,6 +753,8 @@ function renderBook(book) {
   detailLanguage.textContent = book.language || "-";
   detailReleaseDate.textContent = formatDate(book.releaseDate);
   detailLicense.textContent = book.licenseType || "-";
+  detailViews.textContent = formatMetric(book.viewCount);
+  detailDownloads.textContent = formatMetric(book.downloadCount);
 
   const access = getBookAccess(book, currentUser);
 
@@ -590,8 +772,10 @@ function renderBook(book) {
 
   renderAccessActions(book);
 
-  saveBookButton.textContent = isBookSaved(book.id) ? "Saved" : "Save Book";
-  saveBookButton.classList.toggle("saved", isBookSaved(book.id));
+  renderFavoriteButton(book);
+  loadReviewsForBook(book);
+  renderReviewComposer();
+  trackBookOpenIfReady();
 }
 
 function renderMissing(message) {
@@ -605,6 +789,7 @@ function renderMissing(message) {
   downloadResourceButton.hidden = true;
   if (bookAccessMessage) bookAccessMessage.hidden = true;
   saveBookButton.hidden = true;
+  if (bookReviews) bookReviews.hidden = true;
   hideReader();
 }
 
@@ -621,7 +806,58 @@ readerDownloadButton.addEventListener("click", () => handleProtectedResourceActi
 saveBookButton.addEventListener("click", () => {
   if (!currentBook) return;
   toggleSavedBook(currentBook.id);
-  renderBook(currentBook);
+  renderFavoriteButton(currentBook);
+});
+
+reviewForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!currentBook?.id || !currentUser?.uid) return;
+
+  clearMessage(reviewMessage);
+  const formData = new FormData(reviewForm);
+
+  try {
+    [...reviewForm.elements].forEach((element) => {
+      element.disabled = true;
+    });
+    await saveBookReview(currentBook.id, {
+      rating: Number(formData.get("rating")),
+      comment: formData.get("comment")
+    });
+    currentReviews = await listBookReviews(currentBook.id);
+    renderReviews();
+    setMessage(reviewMessage, "Your review has been saved.", "success");
+  } catch (error) {
+    setMessage(reviewMessage, friendlyReviewError(error, "Your review could not be saved."), "error");
+  } finally {
+    [...reviewForm.elements].forEach((element) => {
+      element.disabled = false;
+    });
+  }
+});
+
+reviewCancelButton?.addEventListener("click", () => {
+  clearMessage(reviewMessage);
+  renderReviewComposer();
+  reviewForm.elements.comment.focus();
+});
+
+reviewsList?.addEventListener("click", async (event) => {
+  const deleteButton = event.target.closest("[data-delete-review]");
+  if (!deleteButton || !currentBook?.id || !currentUser?.uid) return;
+  if (!window.confirm("Delete your review for this book?")) return;
+
+  deleteButton.disabled = true;
+  try {
+    await deleteBookReview(currentBook.id);
+    currentReviews = currentReviews.filter((review) => review.userId !== currentUser.uid);
+    clearMessage(reviewMessage);
+    renderReviews();
+    setMessage(reviewMessage, "Your review was deleted.", "success");
+  } catch (error) {
+    deleteButton.disabled = false;
+    setMessage(reviewMessage, friendlyReviewError(error, "Your review could not be deleted."), "error");
+  }
 });
 
 async function resolveReaderAccess() {
@@ -640,19 +876,30 @@ async function resolveReaderAccess() {
       sessionRequest
         .then((lateSession) => {
           currentUser = lateSession;
-          if (currentBook) renderAccessActions(currentBook);
+          readerIdentityResolved = true;
+          if (currentBook) {
+            renderAccessActions(currentBook);
+            renderReviews();
+            trackBookOpenIfReady();
+          }
         })
         .catch((error) => console.warn("Reader access could not be verified.", error));
     } else {
       currentUser = session;
+      readerIdentityResolved = true;
     }
   } catch (error) {
     currentUser = null;
+    readerIdentityResolved = true;
     console.warn("Reader access could not be verified.", error);
   } finally {
     window.clearTimeout(timeoutId);
     readerAccessResolved = true;
-    if (currentBook) renderAccessActions(currentBook);
+    if (currentBook) {
+      renderAccessActions(currentBook);
+      renderReviews();
+      trackBookOpenIfReady();
+    }
   }
 }
 

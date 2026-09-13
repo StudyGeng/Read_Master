@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "start": "node tools/dev-server.mjs 5500",
-    "check": "node --check public/js/firebase-service.js && node --check public/js/main.js && node --check public/js/books.js && node --check public/js/book-access.js && node --check public/js/book-details.js && node --check public/js/reading-list.js && node --check public/js/user-auth.js && node --check public/js/user-profile.js && node --check public/js/admin-auth.js && node --check public/js/admin-books.js",
+    "check": "node --input-type=module -e \"import { readdirSync } from 'node:fs'; import { spawnSync } from 'node:child_process'; const files = readdirSync('public/js').filter((file) => file.endsWith('.js')).sort(); for (const file of files) { const result = spawnSync(process.execPath, ['--check', 'public/js/' + file], { stdio: 'inherit' }); if (result.status !== 0) process.exit(result.status ?? 1); } console.log('Syntax check passed for ' + files.length + ' JavaScript modules.');\"",
     "smoke": "node tools/smoke-test.mjs"
   }
 }

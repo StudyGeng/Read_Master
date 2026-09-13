@@ -1,12 +1,27 @@
 import { firebaseCollections, firebaseConfig, hasFirebaseConfig } from "./firebase-config.js";
+import {
+  clearLocalLibraryActivity,
+  getLocalLibraryActivity,
+  mergeLocalLibraryActivity,
+  recordLocalBookActivity
+} from "./library-store.js";
+import {
+  adoptGuestSavedBooksForUser,
+  getSavedIdsForUser,
+  replaceSavedIdsForUser
+} from "./reading-store.js";
 import { sampleBooks } from "./sample-data.js";
 
 const firebaseSdkVersion = "10.12.5";
 const booksKey = "readmaster:books";
 const usersKey = "readmaster:users";
-const readingListKey = "readmaster:reading-list";
+const reviewsKey = "readmaster:book-reviews:v1";
+const publicProfilesKey = "readmaster:public-profiles:v1";
+const profileCommentsKey = "readmaster:profile-comments:v1";
+const notificationsKey = "readmaster:notifications:v1";
+const notificationReadsKey = "readmaster:notification-reads:v1";
 const sampleDataVersionKey = "readmaster:sample-data-version";
-const sampleDataVersion = "8";
+const sampleDataVersion = "9";
 const adminSessionKey = "readmaster:admin-session";
 const userSessionKey = "readmaster:demo-user-session";
 const forceDemoMode = globalThis.process?.env?.READ_MASTER_DEMO_MODE === "1";
@@ -25,6 +40,12 @@ const allowedLicenseTypeValues = [
 const allowedLicenseTypes = new Set(allowedLicenseTypeValues);
 const profilePhotoMaxBytes = 2 * 1024 * 1024;
 const profilePhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const reviewCommentMaxLength = 1000;
+const profileCommentMaxLength = 500;
+const notificationMessageMaxLength = 400;
+const notificationKinds = new Set(["announcement", "new-book", "maintenance"]);
+const bookInteractionTypes = new Set(["view", "download"]);
+const libraryActivityTypes = new Set(["opened", "read", "downloaded"]);
 const sampleBookIds = new Set(sampleBooks.map((book) => book.id));
 
 let firebasePromise;
@@ -105,10 +126,12 @@ function storeUserSession(session) {
     return;
   }
 
-  writeLocal(userSessionKey, {
+  const storedSession = {
     ...session,
     cachedAt: new Date().toISOString()
-  });
+  };
+  writeLocal(userSessionKey, storedSession);
+  upsertLocalPublicProfile(storedSession);
 }
 
 export function getCachedUser() {
@@ -144,15 +167,6 @@ function clearCachedUserSession() {
   storeUserSession(null);
 }
 
-function readLocalSavedBookIds() {
-  const savedIds = readLocal(readingListKey, []);
-  return Array.isArray(savedIds) ? savedIds.filter(Boolean) : [];
-}
-
-function writeLocalSavedBookIds(savedIds) {
-  writeLocal(readingListKey, [...new Set(savedIds.filter(Boolean))]);
-}
-
 function createLocalId(prefix = "book") {
   if (window.crypto?.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -168,6 +182,45 @@ function timestampToDateInput(value) {
   return "";
 }
 
+function timestampToIso(value) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (typeof value.seconds === "number") {
+    return new Date((value.seconds * 1000) + Math.floor((value.nanoseconds || 0) / 1e6)).toISOString();
+  }
+  return "";
+}
+
+function normalizedNonNegativeInteger(value, fallback = 0) {
+  const number = Number(value);
+  if (Number.isFinite(number) && number >= 0) return Math.floor(number);
+  return Math.max(0, Math.floor(Number(fallback) || 0));
+}
+
+function normalizedTrendScore(value) {
+  const score = Number(value || 0);
+  return Number.isFinite(score) && score > 0 ? score : 0;
+}
+
+function legacyInteractionCounts(data = {}) {
+  const trendScore = normalizedTrendScore(data.trendScore ?? data.trend_score);
+  return {
+    viewCount: normalizedNonNegativeInteger(
+      data.viewCount ?? data.view_count,
+      trendScore * 12
+    ),
+    downloadCount: normalizedNonNegativeInteger(
+      data.downloadCount ?? data.download_count,
+      trendScore * 3
+    )
+  };
+}
+
 function normalizeBook(data, id = data.id) {
   const normalizedId = id || data.id;
   const generatedCoverUrl = sampleBookIds.has(normalizedId)
@@ -177,6 +230,8 @@ function normalizeBook(data, id = data.id) {
   const coverUrl = generatedCoverUrl && (!rawCoverUrl || rawCoverUrl.startsWith(`assets/covers/${normalizedId}.svg`))
     ? generatedCoverUrl
     : rawCoverUrl;
+
+  const interactionCounts = legacyInteractionCounts(data);
 
   return {
     id: normalizedId,
@@ -192,11 +247,350 @@ function normalizeBook(data, id = data.id) {
     resourceUrl: data.resourceUrl || data.resource_url || "",
     coverUrl,
     status: data.status || "published",
-    trendScore: Number(data.trendScore ?? data.trend_score ?? 0),
+    viewCount: interactionCounts.viewCount,
+    downloadCount: interactionCounts.downloadCount,
+    trendScore: normalizedTrendScore(data.trendScore ?? data.trend_score),
     description: data.description || "",
-    createdAt: timestampToDateInput(data.createdAt || data.created_at),
-    updatedAt: timestampToDateInput(data.updatedAt || data.updated_at)
+    createdAt: timestampToIso(data.createdAt || data.created_at),
+    updatedAt: timestampToIso(data.updatedAt || data.updated_at)
   };
+}
+
+function normalizeReview(data = {}, id = data.userId || data.id, bookId = data.bookId) {
+  return {
+    id: String(id || data.userId || "").trim(),
+    bookId: String(bookId || data.bookId || "").trim(),
+    userId: String(data.userId || id || "").trim(),
+    userName: String(data.userName || "Reader").trim().slice(0, 80) || "Reader",
+    rating: normalizedNonNegativeInteger(data.rating),
+    comment: String(data.comment || "").trim().slice(0, reviewCommentMaxLength),
+    createdAt: timestampToIso(data.createdAt || data.created_at),
+    updatedAt: timestampToIso(data.updatedAt || data.updated_at)
+  };
+}
+
+function validateReviewInput(review = {}) {
+  const rating = Number(review.rating);
+  const comment = String(review.comment || "").trim();
+
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error("Please choose a rating from 1 to 5.");
+  }
+  if (comment.length < 3) throw new Error("Review comments must be at least 3 characters.");
+  if (comment.length > reviewCommentMaxLength) {
+    throw new Error(`Review comments must be ${reviewCommentMaxLength} characters or fewer.`);
+  }
+
+  return { rating, comment };
+}
+
+function readLocalReviews() {
+  const reviews = readLocal(reviewsKey, []);
+  return Array.isArray(reviews)
+    ? reviews.map((review) => normalizeReview(review)).filter((review) => {
+        return review.id
+          && review.bookId
+          && review.rating >= 1
+          && review.rating <= 5
+          && review.comment.length >= 3;
+      })
+    : [];
+}
+
+function writeLocalReviews(reviews) {
+  const normalized = (Array.isArray(reviews) ? reviews : [])
+    .map((review) => normalizeReview(review))
+    .filter((review) => {
+      return review.id
+        && review.bookId
+        && review.rating >= 1
+        && review.rating <= 5
+        && review.comment.length >= 3;
+    })
+    .slice(0, 500);
+  writeLocal(reviewsKey, normalized);
+}
+
+function cacheBookReviews(bookId, reviews) {
+  const otherReviews = readLocalReviews().filter((review) => review.bookId !== bookId);
+  writeLocalReviews([...reviews, ...otherReviews]);
+}
+
+function upsertLocalReview(review) {
+  const normalized = normalizeReview(review);
+  const reviews = readLocalReviews().filter((item) => {
+    return item.bookId !== normalized.bookId || item.userId !== normalized.userId;
+  });
+  writeLocalReviews([normalized, ...reviews]);
+  return normalized;
+}
+
+function removeLocalReview(bookId, userId) {
+  writeLocalReviews(readLocalReviews().filter((review) => {
+    return review.bookId !== bookId || review.userId !== userId;
+  }));
+}
+
+function sortReviewsNewest(a, b) {
+  const dateCompare = String(b.updatedAt || b.createdAt || "")
+    .localeCompare(String(a.updatedAt || a.createdAt || ""));
+  return dateCompare || String(a.userName || "").localeCompare(String(b.userName || ""));
+}
+
+function normalizePublicProfile(data = {}, id = data.userId || data.uid || data.id) {
+  const userId = String(id || data.userId || data.uid || "").trim();
+  const isPublic = Boolean(data.isPublic);
+
+  return {
+    userId,
+    displayName: String(data.displayName || data.name || "Reader").trim().slice(0, 80) || "Reader",
+    avatarURL: String(data.avatarURL || data.photoURL || "").trim().slice(0, 2048),
+    bio: String(data.bio || "").trim().slice(0, 300),
+    isPublic,
+    showReadingHistory: isPublic && Boolean(data.showReadingHistory),
+    joinedAt: timestampToIso(data.joinedAt || data.createdAt),
+    updatedAt: timestampToIso(data.updatedAt)
+  };
+}
+
+function readLocalPublicProfiles() {
+  const profiles = readLocal(publicProfilesKey, []);
+  return Array.isArray(profiles)
+    ? profiles.map((profile) => normalizePublicProfile(profile)).filter((profile) => profile.userId)
+    : [];
+}
+
+function writeLocalPublicProfiles(profiles) {
+  writeLocal(publicProfilesKey, (Array.isArray(profiles) ? profiles : [])
+    .map((profile) => normalizePublicProfile(profile))
+    .filter((profile) => profile.userId));
+}
+
+function upsertLocalPublicProfile(profileData) {
+  const userId = String(profileData?.userId || profileData?.uid || "").trim();
+  if (!userId) return null;
+
+  const profiles = readLocalPublicProfiles();
+  const index = profiles.findIndex((profile) => profile.userId === userId);
+  const existing = index >= 0 ? profiles[index] : null;
+  const nextProfile = normalizePublicProfile({
+    ...existing,
+    ...profileData,
+    userId,
+    displayName: profileData.displayName || profileData.name || existing?.displayName,
+    avatarURL: profileData.avatarURL ?? profileData.photoURL ?? existing?.avatarURL,
+    isPublic: profileData.isPublic ?? existing?.isPublic ?? false,
+    showReadingHistory: profileData.showReadingHistory ?? existing?.showReadingHistory ?? false,
+    joinedAt: profileData.joinedAt || existing?.joinedAt,
+    updatedAt: profileData.updatedAt || new Date().toISOString()
+  }, userId);
+
+  if (index >= 0) profiles[index] = nextProfile;
+  else profiles.unshift(nextProfile);
+  writeLocalPublicProfiles(profiles);
+  return nextProfile;
+}
+
+function normalizeProfileComment(data = {}, id = data.id || data.authorId, profileId = data.profileId) {
+  return {
+    id: String(id || data.id || data.authorId || "").trim(),
+    profileId: String(profileId || data.profileId || "").trim(),
+    authorId: String(data.authorId || id || "").trim(),
+    authorName: String(data.authorName || "Reader").trim().slice(0, 80) || "Reader",
+    authorPhotoURL: String(data.authorPhotoURL || "").trim().slice(0, 2048),
+    comment: String(data.comment || "").trim().slice(0, profileCommentMaxLength),
+    createdAt: timestampToIso(data.createdAt),
+    updatedAt: timestampToIso(data.updatedAt)
+  };
+}
+
+function readLocalProfileComments() {
+  const comments = readLocal(profileCommentsKey, []);
+  return Array.isArray(comments)
+    ? comments.map((comment) => normalizeProfileComment(comment)).filter((comment) => {
+        return comment.id && comment.profileId && comment.authorId && comment.comment.length >= 3;
+      })
+    : [];
+}
+
+function writeLocalProfileComments(comments) {
+  writeLocal(profileCommentsKey, (Array.isArray(comments) ? comments : [])
+    .map((comment) => normalizeProfileComment(comment))
+    .filter((comment) => comment.id && comment.profileId && comment.authorId && comment.comment.length >= 3)
+    .slice(0, 1000));
+}
+
+function sortProfileCommentsNewest(a, b) {
+  return String(b.updatedAt || b.createdAt || "")
+    .localeCompare(String(a.updatedAt || a.createdAt || ""));
+}
+
+function validateProfileCommentInput(value) {
+  const comment = String(value || "").trim();
+  if (comment.length < 3) throw new Error("Profile comments must be at least 3 characters.");
+  if (comment.length > profileCommentMaxLength) {
+    throw new Error(`Profile comments must be ${profileCommentMaxLength} characters or fewer.`);
+  }
+  return comment;
+}
+
+function safeNotificationLink(value) {
+  const linkUrl = String(value || "").trim();
+  if (!linkUrl) return "";
+
+  try {
+    const baseUrl = new URL("https://read-master.local/");
+    const parsed = new URL(linkUrl, baseUrl);
+    if (parsed.origin !== baseUrl.origin || parsed.username || parsed.password || linkUrl.includes("\\")) {
+      throw new Error("external or unsafe address");
+    }
+    return linkUrl.slice(0, 500);
+  } catch {
+    throw new Error("Notification links must point to a page inside Read_Master.");
+  }
+}
+
+function normalizeNotification(data = {}, id = data.id) {
+  const kind = notificationKinds.has(data.kind) ? data.kind : "announcement";
+  return {
+    id: String(id || data.id || "").trim(),
+    title: String(data.title || "Library update").trim().slice(0, 80) || "Library update",
+    message: String(data.message || "").trim().slice(0, notificationMessageMaxLength),
+    kind,
+    linkUrl: String(data.linkUrl || data.link || "").trim().slice(0, 500),
+    active: Boolean(data.active),
+    createdBy: String(data.createdBy || "").trim(),
+    createdByName: String(data.createdByName || "Administrator").trim().slice(0, 80) || "Administrator",
+    createdAt: timestampToIso(data.createdAt),
+    updatedAt: timestampToIso(data.updatedAt)
+  };
+}
+
+function validateNotificationInput(notification = {}) {
+  const title = String(notification.title || "").trim();
+  const message = String(notification.message || "").trim();
+  const kind = String(notification.kind || "announcement").trim();
+
+  if (!title) throw new Error("Notification title is required.");
+  if (title.length > 80) throw new Error("Notification titles must be 80 characters or fewer.");
+  if (message.length < 3) throw new Error("Notification messages must be at least 3 characters.");
+  if (message.length > notificationMessageMaxLength) {
+    throw new Error(`Notification messages must be ${notificationMessageMaxLength} characters or fewer.`);
+  }
+  if (!notificationKinds.has(kind)) throw new Error("Choose a valid notification type.");
+
+  return {
+    title,
+    message,
+    kind,
+    linkUrl: safeNotificationLink(notification.linkUrl),
+    active: notification.active !== false
+  };
+}
+
+function readLocalNotifications() {
+  const notifications = readLocal(notificationsKey, []);
+  return Array.isArray(notifications)
+    ? notifications.map((notification) => normalizeNotification(notification)).filter((notification) => {
+        return notification.id && notification.title && notification.message;
+      })
+    : [];
+}
+
+function writeLocalNotifications(notifications) {
+  writeLocal(notificationsKey, (Array.isArray(notifications) ? notifications : [])
+    .map((notification) => normalizeNotification(notification))
+    .filter((notification) => notification.id && notification.title && notification.message)
+    .slice(0, 100));
+}
+
+function sortNotificationsNewest(a, b) {
+  return String(b.updatedAt || b.createdAt || "")
+    .localeCompare(String(a.updatedAt || a.createdAt || ""));
+}
+
+function notificationVersion(notification) {
+  return String(notification?.updatedAt || notification?.createdAt || "");
+}
+
+function notificationReadScope(userId = "") {
+  const uid = String(userId || readUserSession()?.uid || "").trim();
+  return uid ? `user:${uid}` : "guest";
+}
+
+function readLocalNotificationReadStore() {
+  const stored = readLocal(notificationReadsKey, {});
+  const scopes = stored?.scopes;
+  return {
+    version: 1,
+    scopes: scopes && typeof scopes === "object" && !Array.isArray(scopes) ? scopes : {}
+  };
+}
+
+function writeLocalNotificationReadStore(store) {
+  writeLocal(notificationReadsKey, { version: 1, scopes: store.scopes || {} });
+}
+
+function listLocalNotificationReads(userId = "") {
+  const reads = readLocalNotificationReadStore().scopes[notificationReadScope(userId)];
+  if (!reads || typeof reads !== "object" || Array.isArray(reads)) return [];
+
+  return Object.entries(reads).map(([id, version]) => ({
+    notificationId: id,
+    version: String(version || "")
+  }));
+}
+
+function markLocalNotificationsRead(notifications, userId = "") {
+  const store = readLocalNotificationReadStore();
+  const scope = notificationReadScope(userId);
+  const reads = {
+    ...(store.scopes[scope] && typeof store.scopes[scope] === "object" ? store.scopes[scope] : {})
+  };
+
+  (Array.isArray(notifications) ? notifications : []).forEach((notification) => {
+    if (notification?.id) reads[notification.id] = notificationVersion(notification);
+  });
+  store.scopes[scope] = reads;
+  writeLocalNotificationReadStore(store);
+  return listLocalNotificationReads(userId);
+}
+
+function normalizeLibraryActivity(data = {}, bookId = data.bookId) {
+  const lastOpenedAt = timestampToIso(data.lastOpenedAt || data.openedAt);
+  const lastReadAt = timestampToIso(data.lastReadAt || data.readAt);
+  const lastDownloadedAt = timestampToIso(data.lastDownloadedAt || data.downloadedAt);
+
+  return {
+    bookId: String(bookId || data.bookId || "").trim(),
+    firstOpenedAt: timestampToIso(data.firstOpenedAt || lastOpenedAt),
+    lastOpenedAt,
+    openedAt: lastOpenedAt,
+    openCount: normalizedNonNegativeInteger(data.openCount ?? data.openedCount),
+    lastReadAt,
+    readAt: lastReadAt,
+    readCount: normalizedNonNegativeInteger(data.readCount),
+    lastDownloadedAt,
+    downloadedAt: lastDownloadedAt,
+    downloadCount: normalizedNonNegativeInteger(data.downloadCount ?? data.downloadedCount),
+    updatedAt: timestampToIso(data.updatedAt)
+  };
+}
+
+function normalizePublicReadingHistory(data = {}, bookId = data.bookId) {
+  return {
+    bookId: String(bookId || data.bookId || "").trim(),
+    userId: String(data.userId || "").trim(),
+    readCount: normalizedNonNegativeInteger(data.readCount),
+    lastReadAt: timestampToIso(data.lastReadAt || data.readAt),
+    updatedAt: timestampToIso(data.updatedAt)
+  };
+}
+
+function validateLibraryActivityType(type) {
+  if (!libraryActivityTypes.has(type)) {
+    throw new Error("Activity type must be opened, read, or downloaded.");
+  }
 }
 
 export function isPublicBook(book) {
@@ -230,7 +624,7 @@ function getLocalBooks() {
   const storedBooks = readLocal(booksKey, null);
 
   if (storedBooks === null) {
-    const seededBooks = sampleBooks.map((book) => ({ ...book }));
+    const seededBooks = sampleBooks.map((book) => normalizeBook(book));
     writeLocal(booksKey, seededBooks);
     localStorage.setItem(sampleDataVersionKey, sampleDataVersion);
     return seededBooks;
@@ -242,16 +636,18 @@ function getLocalBooks() {
   if (storedVersion !== sampleDataVersion) {
     const sampleBookById = new Map(sampleBooks.map((book) => [book.id, book]));
     const storedIds = new Set(storedBooks.map((book) => book.id));
-    const newSampleBooks = sampleBooks.filter((book) => !storedIds.has(book.id));
+    const newSampleBooks = sampleBooks
+      .filter((book) => !storedIds.has(book.id))
+      .map((book) => normalizeBook(book));
     const refreshedBooks = storedBooks.map((book) => {
       const sampleBook = sampleBookById.get(book.id);
-      if (!sampleBook) return book;
+      if (!sampleBook) return normalizeBook(book);
 
-      return {
+      return normalizeBook({
         ...sampleBook,
         ...book,
         licenseChecked: book.licenseChecked ?? sampleBook.licenseChecked
-      };
+      }, book.id);
     });
     const mergedBooks = [...newSampleBooks, ...refreshedBooks];
 
@@ -268,7 +664,14 @@ function setLocalBooks(books) {
 }
 
 function sortNewest(a, b) {
-  return String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
+  const createdCompare = String(b.createdAt || b.releaseDate || "")
+    .localeCompare(String(a.createdAt || a.releaseDate || ""));
+  if (createdCompare) return createdCompare;
+
+  const releaseCompare = String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
+  if (releaseCompare) return releaseCompare;
+
+  return String(a.title || "").localeCompare(String(b.title || ""));
 }
 
 function safeFileName(name) {
@@ -559,11 +962,14 @@ export function getCachedBook(bookId) {
 function sampleBookPayload(book) {
   const payload = cleanBookPayload(book);
   validateBookPayload(payload);
+  const interactionCounts = legacyInteractionCounts(book);
 
   return {
     ...payload,
     coverUrl: `assets/covers/${book.id}.svg?v=${sampleCoverVersion}`,
-    trendScore: Number(book.trendScore || 0)
+    viewCount: interactionCounts.viewCount,
+    downloadCount: interactionCounts.downloadCount,
+    trendScore: normalizedTrendScore(book.trendScore)
   };
 }
 
@@ -612,6 +1018,43 @@ function saveFirebaseUserProfile(firebase, session, options = {}) {
   );
 }
 
+function saveFirebasePublicProfile(firebase, session) {
+  if (!firebase || !session?.uid) return Promise.resolve();
+
+  const localProfile = upsertLocalPublicProfile(session);
+  const { db, firestoreModule } = firebase;
+  const profileRef = firestoreModule.doc(
+    db,
+    firebaseCollections.publicProfiles,
+    session.uid
+  );
+
+  return firestoreModule.runTransaction(db, async (transaction) => {
+    const profileDoc = await transaction.get(profileRef);
+    const payload = {
+      userId: session.uid,
+      displayName: session.name || session.email?.split("@")[0] || "Reader",
+      avatarURL: session.photoURL || "",
+      joinedAt: localProfile?.joinedAt || timestampToIso(session.joinedAt) || "",
+      updatedAt: firestoreModule.serverTimestamp()
+    };
+
+    if (!profileDoc.exists()) {
+      payload.bio = localProfile?.bio || "";
+      payload.isPublic = Boolean(localProfile?.isPublic);
+      payload.showReadingHistory = Boolean(localProfile?.showReadingHistory);
+    }
+
+    transaction.set(profileRef, payload, { merge: true });
+  });
+}
+
+function syncFirebasePublicProfileSilently(firebase, session) {
+  saveFirebasePublicProfile(firebase, session).catch((error) => {
+    console.warn("The public reader profile could not be synchronized.", error);
+  });
+}
+
 async function loadFirebaseUserProfile(firebase, userId) {
   if (!firebase || !userId) return {};
 
@@ -639,7 +1082,7 @@ async function getFirebaseAuthUser(firebase) {
 }
 
 async function syncSavedBooksForUser(userId, firebase) {
-  if (!userId || !firebase) return readLocalSavedBookIds();
+  if (!userId || !firebase) return getSavedIdsForUser(userId);
 
   const { db, firestoreModule } = firebase;
   const savedBooksRef = firestoreModule.collection(
@@ -650,7 +1093,7 @@ async function syncSavedBooksForUser(userId, firebase) {
   );
   const snapshot = await firestoreModule.getDocs(savedBooksRef);
   const cloudIds = snapshot.docs.map((savedDoc) => savedDoc.id);
-  const mergedIds = [...new Set([...cloudIds, ...readLocalSavedBookIds()])];
+  const mergedIds = [...new Set([...cloudIds, ...getSavedIdsForUser(userId)])];
 
   await Promise.all(mergedIds.map((bookId) => {
     return firestoreModule.setDoc(
@@ -663,7 +1106,7 @@ async function syncSavedBooksForUser(userId, firebase) {
     );
   }));
 
-  writeLocalSavedBookIds(mergedIds);
+  replaceSavedIdsForUser(mergedIds, userId);
   return mergedIds;
 }
 
@@ -816,6 +1259,13 @@ export async function seedDemoBooks() {
       savedBook.createdAt = firestoreModule.serverTimestamp();
       created += 1;
     } else {
+      const existingBook = bookDoc.data();
+      if (Number.isFinite(Number(existingBook.viewCount))) {
+        savedBook.viewCount = normalizedNonNegativeInteger(existingBook.viewCount);
+      }
+      if (Number.isFinite(Number(existingBook.downloadCount))) {
+        savedBook.downloadCount = normalizedNonNegativeInteger(existingBook.downloadCount);
+      }
       updated += 1;
     }
 
@@ -861,6 +1311,84 @@ export async function getBook(bookId) {
   return sampleBook ? normalizeBook(sampleBook) : null;
 }
 
+function incrementLocalBookInteraction(bookId, interaction) {
+  const books = getLocalBooks();
+  const index = books.findIndex((book) => book.id === bookId);
+  if (index === -1) return null;
+
+  const currentBook = normalizeBook(books[index], bookId);
+  if (currentBook.status !== "published" || !isPublicBook(currentBook)) {
+    throw new Error("Only published public books can record reader interactions.");
+  }
+
+  const counterField = interaction === "view" ? "viewCount" : "downloadCount";
+  const updatedBook = normalizeBook({
+    ...currentBook,
+    [counterField]: currentBook[counterField] + 1
+  }, bookId);
+
+  books[index] = updatedBook;
+  setLocalBooks(books);
+  return updatedBook;
+}
+
+export async function recordBookInteraction(bookId, interaction) {
+  const normalizedBookId = String(bookId || "").trim();
+  if (!normalizedBookId) throw new Error("Book ID is required.");
+  if (!bookInteractionTypes.has(interaction)) {
+    throw new Error("Book interaction must be view or download.");
+  }
+
+  // Keep the interface responsive and retain a best-effort count if the network is unavailable.
+  const localBook = incrementLocalBookInteraction(normalizedBookId, interaction);
+  if (!configured) {
+    if (!localBook) throw new Error("Book not found.");
+    return localBook;
+  }
+
+  try {
+    const firebase = await getFirebase();
+    const { db, firestoreModule } = firebase;
+    const bookRef = firestoreModule.doc(db, firebaseCollections.books, normalizedBookId);
+    const remoteBook = await firestoreModule.runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(bookRef);
+      if (!snapshot.exists()) throw new Error("Book not found.");
+
+      const bookData = snapshot.data();
+      const normalized = normalizeBook(bookData, snapshot.id);
+      if (normalized.status !== "published" || !isPublicBook(normalized)) {
+        throw new Error("Only published public books can record reader interactions.");
+      }
+
+      // Firestore rules require exactly one counter to increase by one. Supplying both
+      // counters also migrates legacy records that do not have explicit zero values yet.
+      const currentCounts = legacyInteractionCounts(bookData);
+      const currentViewCount = currentCounts.viewCount;
+      const currentDownloadCount = currentCounts.downloadCount;
+      const nextViewCount = currentViewCount + (interaction === "view" ? 1 : 0);
+      const nextDownloadCount = currentDownloadCount + (interaction === "download" ? 1 : 0);
+
+      transaction.update(bookRef, {
+        viewCount: nextViewCount,
+        downloadCount: nextDownloadCount
+      });
+
+      return normalizeBook({
+        ...bookData,
+        viewCount: nextViewCount,
+        downloadCount: nextDownloadCount
+      }, snapshot.id);
+    });
+
+    cacheBooksLocally([remoteBook]);
+    return remoteBook;
+  } catch (error) {
+    console.warn("Book interaction could not sync to Firebase.", error);
+    if (localBook) return localBook;
+    throw error;
+  }
+}
+
 export async function createBook(bookData, files = {}) {
   const payload = cleanBookPayload(bookData);
   validateBookPayload(payload, files);
@@ -870,6 +1398,8 @@ export async function createBook(bookData, files = {}) {
     const localBook = normalizeBook({
       ...payload,
       id: createLocalId(),
+      viewCount: 0,
+      downloadCount: 0,
       createdAt: now,
       updatedAt: now
     });
@@ -887,12 +1417,15 @@ export async function createBook(bookData, files = {}) {
     ...payload,
     coverUrl: uploadedCoverUrl || payload.coverUrl,
     resourceUrl: uploadedResourceUrl || payload.resourceUrl,
+    viewCount: 0,
+    downloadCount: 0,
+    trendScore: 0,
     createdAt: firestoreModule.serverTimestamp(),
     updatedAt: firestoreModule.serverTimestamp()
   };
 
   await firestoreModule.setDoc(bookRef, savedBook);
-  return normalizeBook(savedBook, bookRef.id);
+  return getBook(bookRef.id);
 }
 
 export async function updateBook(bookId, bookData, files = {}) {
@@ -953,6 +1486,424 @@ export async function deleteBook(bookId) {
   );
 }
 
+export async function listBookReviews(bookId) {
+  const normalizedBookId = String(bookId || "").trim();
+  if (!normalizedBookId) throw new Error("Book ID is required.");
+
+  const cachedReviews = readLocalReviews()
+    .filter((review) => review.bookId === normalizedBookId)
+    .sort(sortReviewsNewest);
+  if (!configured) return cachedReviews;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase book reviews");
+    const { db, firestoreModule } = firebase;
+    const reviewsRef = firestoreModule.collection(
+      db,
+      firebaseCollections.books,
+      normalizedBookId,
+      "reviews"
+    );
+    const snapshot = await withTimeout(
+      firestoreModule.getDocs(reviewsRef),
+      "Firestore book reviews"
+    );
+    const reviews = snapshot.docs
+      .map((reviewDoc) => normalizeReview(reviewDoc.data(), reviewDoc.id, normalizedBookId))
+      .filter((review) => review.rating >= 1 && review.rating <= 5 && review.comment.length >= 3)
+      .sort(sortReviewsNewest);
+
+    cacheBookReviews(normalizedBookId, reviews);
+    return reviews;
+  } catch (error) {
+    console.warn("Using cached reviews because Firestore reviews could not load.", error);
+    return cachedReviews;
+  }
+}
+
+export async function saveBookReview(bookId, review) {
+  const normalizedBookId = String(bookId || "").trim();
+  if (!normalizedBookId) throw new Error("Book ID is required.");
+  const payload = validateReviewInput(review);
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) throw new Error("Please sign in to leave a review.");
+
+  const userName = String(currentUser.name || currentUser.email || "Reader").trim().slice(0, 80) || "Reader";
+  const existingLocalReview = readLocalReviews().find((item) => {
+    return item.bookId === normalizedBookId && item.userId === currentUser.uid;
+  });
+  const now = new Date().toISOString();
+
+  if (!configured) {
+    return upsertLocalReview({
+      id: currentUser.uid,
+      bookId: normalizedBookId,
+      userId: currentUser.uid,
+      userName,
+      ...payload,
+      createdAt: existingLocalReview?.createdAt || now,
+      updatedAt: now
+    });
+  }
+
+  const firebase = await getFirebase();
+  const { db, firestoreModule } = firebase;
+  const reviewRef = firestoreModule.doc(
+    db,
+    firebaseCollections.books,
+    normalizedBookId,
+    "reviews",
+    currentUser.uid
+  );
+
+  await firestoreModule.runTransaction(db, async (transaction) => {
+    const reviewDoc = await transaction.get(reviewRef);
+    transaction.set(reviewRef, {
+      bookId: normalizedBookId,
+      userId: currentUser.uid,
+      userName,
+      ...payload,
+      createdAt: reviewDoc.exists()
+        ? reviewDoc.data().createdAt
+        : firestoreModule.serverTimestamp(),
+      updatedAt: firestoreModule.serverTimestamp()
+    });
+  });
+
+  const savedDoc = await firestoreModule.getDoc(reviewRef);
+  const savedReview = normalizeReview(savedDoc.data(), savedDoc.id, normalizedBookId);
+  return upsertLocalReview(savedReview);
+}
+
+export async function deleteBookReview(bookId) {
+  const normalizedBookId = String(bookId || "").trim();
+  if (!normalizedBookId) throw new Error("Book ID is required.");
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) throw new Error("Please sign in to delete your review.");
+
+  if (configured) {
+    const firebase = await getFirebase();
+    const { db, firestoreModule } = firebase;
+    await firestoreModule.deleteDoc(
+      firestoreModule.doc(
+        db,
+        firebaseCollections.books,
+        normalizedBookId,
+        "reviews",
+        currentUser.uid
+      )
+    );
+  }
+
+  removeLocalReview(normalizedBookId, currentUser.uid);
+}
+
+export async function getPublicReaderProfile(userId) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) throw new Error("Reader ID is required.");
+
+  let localProfile = readLocalPublicProfiles().find((profile) => profile.userId === normalizedUserId) || null;
+  if (!localProfile) {
+    const localUser = getLocalUsers().find((user) => user.uid === normalizedUserId);
+    if (localUser) localProfile = upsertLocalPublicProfile(localUser);
+  }
+  if (!configured) return localProfile;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase public reader profile");
+    const { db, firestoreModule } = firebase;
+    const profileDoc = await withTimeout(
+      firestoreModule.getDoc(
+        firestoreModule.doc(db, firebaseCollections.publicProfiles, normalizedUserId)
+      ),
+      "Firestore public reader profile"
+    );
+
+    if (!profileDoc.exists()) {
+      return readUserSession()?.uid === normalizedUserId ? localProfile : null;
+    }
+    return upsertLocalPublicProfile(normalizePublicProfile(profileDoc.data(), profileDoc.id));
+  } catch (error) {
+    console.warn("The public reader profile could not be loaded.", error);
+    return readUserSession()?.uid === normalizedUserId ? localProfile : null;
+  }
+}
+
+async function savePublicReadingHistoryRecords(firebase, userId, activities) {
+  if (!firebase || !userId) return;
+  const { db, firestoreModule } = firebase;
+  const readableActivity = (Array.isArray(activities) ? activities : [])
+    .map((activity) => normalizeLibraryActivity(activity, activity?.bookId))
+    .filter((activity) => activity.bookId && activity.readCount > 0 && activity.lastReadAt);
+
+  await Promise.all(readableActivity.map((activity) => {
+    return firestoreModule.setDoc(
+      firestoreModule.doc(
+        db,
+        firebaseCollections.publicProfiles,
+        userId,
+        "readingHistory",
+        activity.bookId
+      ),
+      {
+        bookId: activity.bookId,
+        userId,
+        readCount: activity.readCount,
+        lastReadAt: new Date(activity.lastReadAt),
+        updatedAt: firestoreModule.serverTimestamp()
+      }
+    );
+  }));
+}
+
+async function clearFirebasePublicReadingHistory(firebase, userId) {
+  if (!firebase || !userId) return;
+  const { db, firestoreModule } = firebase;
+  const historyRef = firestoreModule.collection(
+    db,
+    firebaseCollections.publicProfiles,
+    userId,
+    "readingHistory"
+  );
+  const snapshot = await firestoreModule.getDocs(historyRef);
+  await Promise.all(snapshot.docs.map((historyDoc) => firestoreModule.deleteDoc(historyDoc.ref)));
+}
+
+export async function updatePublicProfileSettings(settings = {}) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) throw new Error("Please sign in to update your public profile.");
+
+  const bio = String(settings.bio || "").trim();
+  if (bio.length > 300) throw new Error("Profile bios must be 300 characters or fewer.");
+
+  const isPublic = Boolean(settings.isPublic);
+  const nextProfile = upsertLocalPublicProfile({
+    ...currentUser,
+    userId: currentUser.uid,
+    displayName: currentUser.name,
+    avatarURL: currentUser.photoURL || "",
+    bio,
+    isPublic,
+    showReadingHistory: isPublic && Boolean(settings.showReadingHistory),
+    updatedAt: new Date().toISOString()
+  });
+
+  if (!configured) return nextProfile;
+
+  const firebase = await getFirebase();
+  const { db, firestoreModule } = firebase;
+  const profileRef = firestoreModule.doc(
+    db,
+    firebaseCollections.publicProfiles,
+    currentUser.uid
+  );
+  await firestoreModule.setDoc(profileRef, {
+    userId: currentUser.uid,
+    displayName: currentUser.name || "Reader",
+    avatarURL: currentUser.photoURL || "",
+    bio,
+    isPublic,
+    showReadingHistory: isPublic && Boolean(settings.showReadingHistory),
+    joinedAt: nextProfile.joinedAt || timestampToIso(currentUser.joinedAt) || "",
+    updatedAt: firestoreModule.serverTimestamp()
+  }, { merge: true });
+
+  if (nextProfile.showReadingHistory) {
+    try {
+      await savePublicReadingHistoryRecords(
+        firebase,
+        currentUser.uid,
+        await listCurrentUserBookActivity()
+      );
+    } catch (error) {
+      console.warn("Existing reading history could not be published.", error);
+    }
+  } else {
+    try {
+      await clearFirebasePublicReadingHistory(firebase, currentUser.uid);
+    } catch (error) {
+      console.warn("The old shared reading history could not be removed.", error);
+    }
+  }
+
+  const savedDoc = await firestoreModule.getDoc(profileRef);
+  return upsertLocalPublicProfile(normalizePublicProfile(savedDoc.data(), savedDoc.id));
+}
+
+export async function listPublicReadingHistory(userId) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) throw new Error("Reader ID is required.");
+
+  const localHistory = getLocalLibraryActivity(normalizedUserId)
+    .map((activity) => normalizePublicReadingHistory({ ...activity, userId: normalizedUserId }))
+    .filter((activity) => activity.bookId && activity.readCount > 0 && activity.lastReadAt)
+    .sort((a, b) => String(b.lastReadAt).localeCompare(String(a.lastReadAt)));
+  if (!configured) return localHistory;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase public reading history");
+    const { db, firestoreModule } = firebase;
+    const historyRef = firestoreModule.collection(
+      db,
+      firebaseCollections.publicProfiles,
+      normalizedUserId,
+      "readingHistory"
+    );
+    const snapshot = await withTimeout(
+      firestoreModule.getDocs(historyRef),
+      "Firestore public reading history"
+    );
+    return snapshot.docs
+      .map((historyDoc) => normalizePublicReadingHistory(historyDoc.data(), historyDoc.id))
+      .filter((activity) => activity.bookId && activity.readCount > 0 && activity.lastReadAt)
+      .sort((a, b) => String(b.lastReadAt).localeCompare(String(a.lastReadAt)));
+  } catch (error) {
+    console.warn("Public reading history could not be loaded.", error);
+    return readUserSession()?.uid === normalizedUserId ? localHistory : [];
+  }
+}
+
+export async function listProfileComments(profileId) {
+  const normalizedProfileId = String(profileId || "").trim();
+  if (!normalizedProfileId) throw new Error("Reader ID is required.");
+
+  const localComments = readLocalProfileComments()
+    .filter((comment) => comment.profileId === normalizedProfileId)
+    .sort(sortProfileCommentsNewest);
+  if (!configured) return localComments;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase profile comments");
+    const { db, firestoreModule } = firebase;
+    const commentsRef = firestoreModule.collection(
+      db,
+      firebaseCollections.publicProfiles,
+      normalizedProfileId,
+      "comments"
+    );
+    const snapshot = await withTimeout(
+      firestoreModule.getDocs(commentsRef),
+      "Firestore profile comments"
+    );
+    const comments = snapshot.docs
+      .map((commentDoc) => normalizeProfileComment(commentDoc.data(), commentDoc.id, normalizedProfileId))
+      .filter((comment) => comment.comment.length >= 3)
+      .sort(sortProfileCommentsNewest);
+
+    writeLocalProfileComments([
+      ...comments,
+      ...readLocalProfileComments().filter((comment) => comment.profileId !== normalizedProfileId)
+    ]);
+    return comments;
+  } catch (error) {
+    console.warn("Profile comments could not be loaded.", error);
+    return localComments;
+  }
+}
+
+export async function saveProfileComment(profileId, value) {
+  const normalizedProfileId = String(profileId || "").trim();
+  if (!normalizedProfileId) throw new Error("Reader ID is required.");
+  const comment = validateProfileCommentInput(value);
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) throw new Error("Please sign in to leave a profile comment.");
+
+  const targetProfile = await getPublicReaderProfile(normalizedProfileId);
+  if (!targetProfile?.isPublic) throw new Error("This reader's public profile is not available.");
+
+  const previousLocal = readLocalProfileComments().find((item) => {
+    return item.profileId === normalizedProfileId && item.authorId === currentUser.uid;
+  });
+  const now = new Date().toISOString();
+
+  if (!configured) {
+    const savedComment = normalizeProfileComment({
+      id: currentUser.uid,
+      profileId: normalizedProfileId,
+      authorId: currentUser.uid,
+      authorName: currentUser.name || "Reader",
+      authorPhotoURL: currentUser.photoURL || "",
+      comment,
+      createdAt: previousLocal?.createdAt || now,
+      updatedAt: now
+    }, currentUser.uid, normalizedProfileId);
+    writeLocalProfileComments([
+      savedComment,
+      ...readLocalProfileComments().filter((item) => {
+        return item.profileId !== normalizedProfileId || item.authorId !== currentUser.uid;
+      })
+    ]);
+    return savedComment;
+  }
+
+  const firebase = await getFirebase();
+  syncFirebasePublicProfileSilently(firebase, currentUser);
+  const { db, firestoreModule } = firebase;
+  const commentRef = firestoreModule.doc(
+    db,
+    firebaseCollections.publicProfiles,
+    normalizedProfileId,
+    "comments",
+    currentUser.uid
+  );
+
+  await firestoreModule.runTransaction(db, async (transaction) => {
+    const commentDoc = await transaction.get(commentRef);
+    transaction.set(commentRef, {
+      profileId: normalizedProfileId,
+      authorId: currentUser.uid,
+      authorName: currentUser.name || "Reader",
+      authorPhotoURL: currentUser.photoURL || "",
+      comment,
+      createdAt: commentDoc.exists()
+        ? commentDoc.data().createdAt
+        : firestoreModule.serverTimestamp(),
+      updatedAt: firestoreModule.serverTimestamp()
+    });
+  });
+
+  const savedDoc = await firestoreModule.getDoc(commentRef);
+  const savedComment = normalizeProfileComment(savedDoc.data(), savedDoc.id, normalizedProfileId);
+  writeLocalProfileComments([
+    savedComment,
+    ...readLocalProfileComments().filter((item) => {
+      return item.profileId !== normalizedProfileId || item.authorId !== currentUser.uid;
+    })
+  ]);
+  return savedComment;
+}
+
+export async function deleteProfileComment(profileId, authorId) {
+  const normalizedProfileId = String(profileId || "").trim();
+  const normalizedAuthorId = String(authorId || "").trim();
+  if (!normalizedProfileId || !normalizedAuthorId) throw new Error("Profile comment IDs are required.");
+
+  const currentUser = await getCurrentUser();
+  const currentAdmin = currentUser ? null : await getCurrentAdmin();
+  const canDelete = currentAdmin
+    || currentUser?.uid === normalizedAuthorId
+    || currentUser?.uid === normalizedProfileId;
+  if (!canDelete) throw new Error("You cannot delete this profile comment.");
+
+  if (configured) {
+    const firebase = await getFirebase();
+    const { db, firestoreModule } = firebase;
+    await firestoreModule.deleteDoc(
+      firestoreModule.doc(
+        db,
+        firebaseCollections.publicProfiles,
+        normalizedProfileId,
+        "comments",
+        normalizedAuthorId
+      )
+    );
+  }
+
+  writeLocalProfileComments(readLocalProfileComments().filter((comment) => {
+    return comment.profileId !== normalizedProfileId || comment.authorId !== normalizedAuthorId;
+  }));
+}
+
 export async function registerUser(name, email, password) {
   const cleanName = String(name || "").trim();
   const cleanEmail = String(email || "").trim().toLowerCase();
@@ -966,6 +1917,7 @@ export async function registerUser(name, email, password) {
 
     upsertLocalUser(session);
     clearCachedAdminSession();
+    adoptGuestSavedBooksForUser(session.uid);
     storeUserSession(session);
     return session;
   }
@@ -976,6 +1928,7 @@ export async function registerUser(name, email, password) {
   const session = normalizeUser(credential.user, cleanName);
 
   clearCachedAdminSession();
+  adoptGuestSavedBooksForUser(session.uid);
   storeUserSession(session);
   upsertLocalUser(session);
   authModule.updateProfile(credential.user, { displayName: cleanName }).catch((error) => {
@@ -984,6 +1937,7 @@ export async function registerUser(name, email, password) {
   saveFirebaseUserProfile(firebase, session, { created: true }).catch((error) => {
     console.warn("Firebase user profile document could not be saved.", error);
   });
+  syncFirebasePublicProfileSilently(firebase, session);
   syncSavedBooksSilently(credential.user.uid, firebase);
   return session;
 }
@@ -1001,6 +1955,7 @@ export async function loginUser(email, password) {
 
     upsertLocalUser(session);
     clearCachedAdminSession();
+    adoptGuestSavedBooksForUser(session.uid);
     storeUserSession(session);
     return session;
   }
@@ -1021,6 +1976,7 @@ export async function loginUser(email, password) {
 
   const session = normalizeUser(credential.user, cloudProfile || {});
   clearCachedAdminSession();
+  adoptGuestSavedBooksForUser(session.uid);
   storeUserSession(session);
   upsertLocalUser(session);
   if (cloudProfile !== null) {
@@ -1028,6 +1984,7 @@ export async function loginUser(email, password) {
       console.warn("Firebase user profile document could not be saved.", error);
     });
   }
+  syncFirebasePublicProfileSilently(firebase, session);
   syncSavedBooksSilently(credential.user.uid, firebase);
   return session;
 }
@@ -1077,6 +2034,7 @@ export async function getCurrentUser() {
   }
 
   const session = normalizeUser(user, fallbackProfile);
+  adoptGuestSavedBooksForUser(session.uid);
   storeUserSession(session);
   upsertLocalUser(session);
 
@@ -1092,6 +2050,7 @@ export async function getCurrentUser() {
       console.warn("Firebase user profile document could not be synchronized.", error);
     });
   }
+  syncFirebasePublicProfileSilently(firebase, session);
 
   return session;
 }
@@ -1215,6 +2174,7 @@ export async function updateUserProfile(profileData, photoFile = null) {
 
   storeUserSession(updatedSession);
   upsertLocalUser(updatedSession);
+  syncFirebasePublicProfileSilently(firebase, updatedSession);
 
   if (previousPhotoPath && previousPhotoPath !== nextPhotoPath) {
     deleteProfilePhoto(firebase, previousPhotoPath).catch((error) => {
@@ -1318,13 +2278,193 @@ export async function updateAdminProfile(name) {
   return updatedSession;
 }
 
-export async function hydrateSavedBooksForCurrentUser() {
-  if (!configured) return readLocalSavedBookIds();
+export async function syncCurrentUserBookActivity(bookId, type, localActivity = null) {
+  const normalizedBookId = String(bookId || "").trim();
+  if (!normalizedBookId) throw new Error("Book ID is required.");
+  validateLibraryActivityType(type);
+  if (!configured) return localActivity ? normalizeLibraryActivity(localActivity, normalizedBookId) : null;
 
   const firebase = await getFirebase();
   const currentUser = await getFirebaseAuthUser(firebase);
-  if (!currentUser) return readLocalSavedBookIds();
+  if (!currentUser) return localActivity ? normalizeLibraryActivity(localActivity, normalizedBookId) : null;
 
+  const { db, firestoreModule } = firebase;
+  const activityRef = firestoreModule.doc(
+    db,
+    firebaseCollections.users,
+    currentUser.uid,
+    "libraryActivity",
+    normalizedBookId
+  );
+
+  await firestoreModule.runTransaction(db, async (transaction) => {
+    const activityDoc = await transaction.get(activityRef);
+    const existing = activityDoc.exists() ? activityDoc.data() : {};
+    const now = firestoreModule.serverTimestamp();
+    const nextActivity = {
+      bookId: normalizedBookId,
+      userId: currentUser.uid,
+      firstOpenedAt: existing.firstOpenedAt || null,
+      lastOpenedAt: existing.lastOpenedAt || null,
+      openCount: normalizedNonNegativeInteger(existing.openCount),
+      lastReadAt: existing.lastReadAt || null,
+      readCount: normalizedNonNegativeInteger(existing.readCount),
+      lastDownloadedAt: existing.lastDownloadedAt || null,
+      downloadCount: normalizedNonNegativeInteger(existing.downloadCount),
+      updatedAt: now
+    };
+
+    if (type === "opened") {
+      nextActivity.firstOpenedAt ||= now;
+      nextActivity.lastOpenedAt = now;
+      nextActivity.openCount += 1;
+    } else if (type === "read") {
+      nextActivity.lastReadAt = now;
+      nextActivity.readCount += 1;
+    } else {
+      nextActivity.lastDownloadedAt = now;
+      nextActivity.downloadCount += 1;
+    }
+
+    transaction.set(activityRef, nextActivity);
+  });
+
+  const syncedDoc = await firestoreModule.getDoc(activityRef);
+  const syncedActivity = normalizeLibraryActivity(syncedDoc.data(), syncedDoc.id);
+  mergeLocalLibraryActivity([syncedActivity], currentUser.uid);
+  const publicProfile = type === "read"
+    ? await getPublicReaderProfile(currentUser.uid)
+    : null;
+  if (type === "read" && publicProfile?.showReadingHistory) {
+    await savePublicReadingHistoryRecords(firebase, currentUser.uid, [syncedActivity]).catch((error) => {
+      console.warn("Public reading history could not be synchronized.", error);
+    });
+  }
+  return syncedActivity;
+}
+
+export async function recordCurrentUserBookActivity(bookId, type) {
+  const normalizedBookId = String(bookId || "").trim();
+  if (!normalizedBookId) throw new Error("Book ID is required.");
+  validateLibraryActivityType(type);
+
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) throw new Error("Please sign in to save library activity.");
+
+  const localActivity = recordLocalBookActivity(normalizedBookId, type, currentUser.uid);
+  try {
+    return await syncCurrentUserBookActivity(normalizedBookId, type, localActivity) || localActivity;
+  } catch (error) {
+    console.warn("Library activity could not sync to Firebase.", error);
+    return localActivity;
+  }
+}
+
+export async function listCurrentUserBookActivity() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) return [];
+
+  const localActivity = getLocalLibraryActivity(currentUser.uid);
+  if (!configured) return localActivity;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase library activity");
+    const { db, firestoreModule } = firebase;
+    const activityRef = firestoreModule.collection(
+      db,
+      firebaseCollections.users,
+      currentUser.uid,
+      "libraryActivity"
+    );
+    const snapshot = await withTimeout(
+      firestoreModule.getDocs(activityRef),
+      "Firestore library activity"
+    );
+    const cloudActivity = snapshot.docs.map((activityDoc) => {
+      return normalizeLibraryActivity(activityDoc.data(), activityDoc.id);
+    });
+
+    return mergeLocalLibraryActivity(cloudActivity, currentUser.uid);
+  } catch (error) {
+    console.warn("Using cached library activity because Firestore could not load.", error);
+    return localActivity;
+  }
+}
+
+export async function clearCurrentUserBookActivity(type = "") {
+  if (type) validateLibraryActivityType(type);
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.uid) return [];
+
+  const localActivity = clearLocalLibraryActivity(type, currentUser.uid);
+  if (!configured) return localActivity;
+
+  try {
+    const firebase = await getFirebase();
+    const { db, firestoreModule } = firebase;
+    const activityRef = firestoreModule.collection(
+      db,
+      firebaseCollections.users,
+      currentUser.uid,
+      "libraryActivity"
+    );
+    const snapshot = await firestoreModule.getDocs(activityRef);
+
+    await Promise.all(snapshot.docs.map((activityDoc) => {
+      if (!type) return firestoreModule.deleteDoc(activityDoc.ref);
+
+      const existing = activityDoc.data();
+      const nextActivity = {
+        bookId: activityDoc.id,
+        userId: currentUser.uid,
+        firstOpenedAt: existing.firstOpenedAt || null,
+        lastOpenedAt: existing.lastOpenedAt || null,
+        openCount: normalizedNonNegativeInteger(existing.openCount),
+        lastReadAt: existing.lastReadAt || null,
+        readCount: normalizedNonNegativeInteger(existing.readCount),
+        lastDownloadedAt: existing.lastDownloadedAt || null,
+        downloadCount: normalizedNonNegativeInteger(existing.downloadCount),
+        updatedAt: firestoreModule.serverTimestamp()
+      };
+
+      if (type === "opened") {
+        nextActivity.firstOpenedAt = null;
+        nextActivity.lastOpenedAt = null;
+        nextActivity.openCount = 0;
+      } else if (type === "read") {
+        nextActivity.lastReadAt = null;
+        nextActivity.readCount = 0;
+      } else {
+        nextActivity.lastDownloadedAt = null;
+        nextActivity.downloadCount = 0;
+      }
+
+      const hasRemainingActivity = nextActivity.openCount > 0
+        || nextActivity.readCount > 0
+        || nextActivity.downloadCount > 0;
+      return hasRemainingActivity
+        ? firestoreModule.setDoc(activityDoc.ref, nextActivity)
+        : firestoreModule.deleteDoc(activityDoc.ref);
+    }));
+
+    if (!type || type === "read") {
+      await clearFirebasePublicReadingHistory(firebase, currentUser.uid);
+    }
+  } catch (error) {
+    console.warn("Library activity could not clear from Firebase.", error);
+  }
+
+  return getLocalLibraryActivity(currentUser.uid);
+}
+
+export async function hydrateSavedBooksForCurrentUser() {
+  if (!configured) return getSavedIdsForUser();
+
+  const firebase = await getFirebase();
+  const currentUser = await getFirebaseAuthUser(firebase);
+  if (!currentUser) return getSavedIdsForUser();
+
+  adoptGuestSavedBooksForUser(currentUser.uid);
   return syncSavedBooksForUser(currentUser.uid, firebase);
 }
 
@@ -1374,6 +2514,254 @@ export async function clearCurrentUserSavedBooks() {
   await Promise.all(snapshot.docs.map((savedDoc) => {
     return firestoreModule.deleteDoc(savedDoc.ref);
   }));
+}
+
+export function getCachedNotifications() {
+  return readLocalNotifications()
+    .filter((notification) => notification.active)
+    .sort(sortNotificationsNewest);
+}
+
+export async function subscribeToPublicNotifications(onChange, onError = () => {}) {
+  const notify = typeof onChange === "function" ? onChange : () => {};
+  const reportError = typeof onError === "function" ? onError : () => {};
+  notify(getCachedNotifications());
+
+  if (!configured) return () => {};
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase notifications");
+    const { db, firestoreModule } = firebase;
+    const notificationsQuery = firestoreModule.query(
+      firestoreModule.collection(db, firebaseCollections.notifications),
+      firestoreModule.where("active", "==", true)
+    );
+
+    return firestoreModule.onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+        const notifications = snapshot.docs
+          .map((notificationDoc) => normalizeNotification(notificationDoc.data(), notificationDoc.id))
+          .filter((notification) => notification.active)
+          .sort(sortNotificationsNewest);
+        writeLocalNotifications(notifications);
+        notify(notifications);
+      },
+      (error) => {
+        console.warn("Live notifications could not be loaded.", error);
+        reportError(error);
+      }
+    );
+  } catch (error) {
+    console.warn("Notifications could not connect to Firebase.", error);
+    reportError(error);
+    return () => {};
+  }
+}
+
+export async function listAllNotifications() {
+  const localNotifications = readLocalNotifications().sort(sortNotificationsNewest);
+  if (!configured) return localNotifications;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase admin notifications");
+    const { db, firestoreModule } = firebase;
+    const snapshot = await withTimeout(
+      firestoreModule.getDocs(
+        firestoreModule.collection(db, firebaseCollections.notifications)
+      ),
+      "Firestore admin notifications"
+    );
+    const notifications = snapshot.docs
+      .map((notificationDoc) => normalizeNotification(notificationDoc.data(), notificationDoc.id))
+      .sort(sortNotificationsNewest);
+    writeLocalNotifications(notifications);
+    return notifications;
+  } catch (error) {
+    console.warn("Admin notifications could not be loaded.", error);
+    if (localNotifications.length) return localNotifications;
+    throw error;
+  }
+}
+
+export async function createNotification(notification) {
+  const payload = validateNotificationInput(notification);
+  const now = new Date().toISOString();
+
+  if (!configured) {
+    const savedNotification = normalizeNotification({
+      ...payload,
+      id: createLocalId("notification"),
+      createdBy: "local-admin",
+      createdByName: "Read_Master Admin",
+      createdAt: now,
+      updatedAt: now
+    });
+    writeLocalNotifications([savedNotification, ...readLocalNotifications()]);
+    return savedNotification;
+  }
+
+  const admin = await getCurrentAdmin();
+  if (!admin?.uid) throw new Error("Administrator access is required.");
+  const firebase = await getFirebase();
+  const { db, firestoreModule } = firebase;
+  const notificationRef = firestoreModule.doc(
+    firestoreModule.collection(db, firebaseCollections.notifications)
+  );
+  await firestoreModule.setDoc(notificationRef, {
+    ...payload,
+    createdBy: admin.uid,
+    createdByName: String(admin.name || admin.email || "Administrator").slice(0, 80),
+    createdAt: firestoreModule.serverTimestamp(),
+    updatedAt: firestoreModule.serverTimestamp()
+  });
+
+  const savedDoc = await firestoreModule.getDoc(notificationRef);
+  const savedNotification = normalizeNotification(savedDoc.data(), savedDoc.id);
+  writeLocalNotifications([
+    savedNotification,
+    ...readLocalNotifications().filter((item) => item.id !== savedNotification.id)
+  ]);
+  return savedNotification;
+}
+
+export async function setNotificationActive(notificationId, active) {
+  const normalizedId = String(notificationId || "").trim();
+  if (!normalizedId) throw new Error("Notification ID is required.");
+
+  if (!configured) {
+    const notifications = readLocalNotifications();
+    const index = notifications.findIndex((notification) => notification.id === normalizedId);
+    if (index === -1) throw new Error("Notification not found.");
+    notifications[index] = normalizeNotification({
+      ...notifications[index],
+      active: Boolean(active),
+      updatedAt: new Date().toISOString()
+    }, normalizedId);
+    writeLocalNotifications(notifications);
+    return notifications[index];
+  }
+
+  const admin = await getCurrentAdmin();
+  if (!admin?.uid) throw new Error("Administrator access is required.");
+  const firebase = await getFirebase();
+  const { db, firestoreModule } = firebase;
+  const notificationRef = firestoreModule.doc(
+    db,
+    firebaseCollections.notifications,
+    normalizedId
+  );
+  await firestoreModule.updateDoc(notificationRef, {
+    active: Boolean(active),
+    updatedAt: firestoreModule.serverTimestamp()
+  });
+
+  const savedDoc = await firestoreModule.getDoc(notificationRef);
+  const savedNotification = normalizeNotification(savedDoc.data(), savedDoc.id);
+  writeLocalNotifications([
+    savedNotification,
+    ...readLocalNotifications().filter((item) => item.id !== normalizedId)
+  ]);
+  return savedNotification;
+}
+
+export async function deleteNotification(notificationId) {
+  const normalizedId = String(notificationId || "").trim();
+  if (!normalizedId) throw new Error("Notification ID is required.");
+
+  if (configured) {
+    const admin = await getCurrentAdmin();
+    if (!admin?.uid) throw new Error("Administrator access is required.");
+    const firebase = await getFirebase();
+    const { db, firestoreModule } = firebase;
+    await firestoreModule.deleteDoc(
+      firestoreModule.doc(db, firebaseCollections.notifications, normalizedId)
+    );
+  }
+
+  writeLocalNotifications(readLocalNotifications().filter((notification) => {
+    return notification.id !== normalizedId;
+  }));
+}
+
+function mergeLocalNotificationReads(reads, userId = "") {
+  const store = readLocalNotificationReadStore();
+  const scope = notificationReadScope(userId);
+  const merged = {
+    ...(store.scopes[scope] && typeof store.scopes[scope] === "object" ? store.scopes[scope] : {})
+  };
+
+  (Array.isArray(reads) ? reads : []).forEach((read) => {
+    const notificationId = String(read?.notificationId || read?.id || "").trim();
+    if (notificationId) merged[notificationId] = String(read?.version || "");
+  });
+  store.scopes[scope] = merged;
+  writeLocalNotificationReadStore(store);
+  return listLocalNotificationReads(userId);
+}
+
+export async function listCurrentUserNotificationReads() {
+  const currentUser = await getCurrentUser();
+  const localReads = listLocalNotificationReads(currentUser?.uid || "");
+  if (!configured || !currentUser?.uid) return localReads;
+
+  try {
+    const firebase = await getFirebaseForRead("Firebase notification receipts");
+    const { db, firestoreModule } = firebase;
+    const receiptsRef = firestoreModule.collection(
+      db,
+      firebaseCollections.users,
+      currentUser.uid,
+      "notificationReads"
+    );
+    const snapshot = await withTimeout(
+      firestoreModule.getDocs(receiptsRef),
+      "Firestore notification receipts"
+    );
+    const cloudReads = snapshot.docs.map((receiptDoc) => ({
+      notificationId: receiptDoc.id,
+      version: String(receiptDoc.data().version || "")
+    }));
+    return mergeLocalNotificationReads(cloudReads, currentUser.uid);
+  } catch (error) {
+    console.warn("Notification receipts could not be loaded.", error);
+    return localReads;
+  }
+}
+
+export async function markCurrentUserNotificationsRead(notifications) {
+  const normalizedNotifications = (Array.isArray(notifications) ? notifications : [])
+    .map((notification) => normalizeNotification(notification, notification?.id))
+    .filter((notification) => notification.id);
+  const currentUser = await getCurrentUser();
+  const localReads = markLocalNotificationsRead(normalizedNotifications, currentUser?.uid || "");
+  if (!configured || !currentUser?.uid || !normalizedNotifications.length) return localReads;
+
+  try {
+    const firebase = await getFirebase();
+    const { db, firestoreModule } = firebase;
+    await Promise.all(normalizedNotifications.map((notification) => {
+      return firestoreModule.setDoc(
+        firestoreModule.doc(
+          db,
+          firebaseCollections.users,
+          currentUser.uid,
+          "notificationReads",
+          notification.id
+        ),
+        {
+          notificationId: notification.id,
+          userId: currentUser.uid,
+          version: notificationVersion(notification),
+          readAt: firestoreModule.serverTimestamp()
+        }
+      );
+    }));
+  } catch (error) {
+    console.warn("Notification receipts could not sync to Firebase.", error);
+  }
+
+  return localReads;
 }
 
 export async function listUsers() {

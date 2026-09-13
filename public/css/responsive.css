@@ -43,6 +43,18 @@
   .book-cover-large {
     min-height: 300px;
   }
+
+  .profile-community {
+    grid-template-columns: 1fr;
+  }
+
+  .reader-profile-card .profile-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-comment-wall {
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
@@ -69,6 +81,28 @@
   .site-nav {
     justify-content: center;
     width: 100%;
+  }
+
+  .site-nav .notification-center {
+    position: static;
+  }
+
+  .notification-panel {
+    top: calc(100% + 8px);
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100vh - 154px);
+  }
+
+  @supports (height: 100dvh) {
+    .notification-panel {
+      max-height: calc(100dvh - 154px);
+    }
+  }
+
+  .notification-panel::before {
+    display: none;
   }
 
   .site-header .brand {
@@ -216,6 +250,32 @@
     font-size: 1.3rem;
   }
 
+  .book-activity-stats {
+    gap: 6px;
+  }
+
+  .library-tabs {
+    grid-template-columns: repeat(4, minmax(126px, 1fr));
+    justify-content: start;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .library-tab {
+    white-space: nowrap;
+  }
+
+  .reviews-heading,
+  .review-card-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-summary {
+    width: fit-content;
+  }
+
   .content-toolbar,
   .section-header,
   .simple-toolbar,
@@ -272,6 +332,46 @@
     flex-direction: column;
   }
 
+  .profile-community {
+    gap: 16px;
+    margin-top: 18px;
+  }
+
+  .profile-community-card {
+    gap: 16px;
+    padding: 17px;
+  }
+
+  .profile-community-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-read-total,
+  .profile-community-heading .review-summary {
+    width: fit-content;
+  }
+
+  .profile-read-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-comment-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .profile-comment-date {
+    white-space: normal;
+  }
+
+  .review-form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
   .profile-photo-editor,
   .profile-photo-actions {
     align-items: stretch;
@@ -305,14 +405,53 @@
   .data-form,
   .details-layout,
   .filter-panel,
-  .resource-reader {
+  .resource-reader,
+  .book-reviews {
     padding: 16px;
+  }
+
+  .review-form,
+  .review-card {
+    padding: 14px;
+  }
+
+  .review-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .reader-frame {
     max-height: 68vh;
     min-height: 420px;
     padding: 14px;
+  }
+
+  .library-assistant {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .library-assistant-panel {
+    width: calc(100vw - 24px);
+    height: min(560px, calc(100vh - 96px));
+    max-height: calc(100vh - 96px);
+  }
+
+  @supports (height: 100dvh) {
+    .library-assistant-panel {
+      height: min(560px, calc(100dvh - 96px));
+      max-height: calc(100dvh - 96px);
+    }
+  }
+
+  .library-assistant-launcher {
+    width: 54px;
+    height: 54px;
+  }
+
+  .library-assistant-launcher-icon {
+    font-size: 1.48rem;
   }
 }
 
@@ -353,6 +492,82 @@
 
   .hero-banner-media {
     min-height: 220px;
+  }
+
+  .notification-panel-header {
+    padding: 15px;
+  }
+
+  .notification-toolbar,
+  .notification-feedback {
+    padding-inline: 13px;
+  }
+
+  .notification-item {
+    padding: 14px;
+  }
+
+  .notification-item.is-unread {
+    padding-left: 19px;
+  }
+
+  .notification-item-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .notification-time {
+    text-align: left;
+  }
+
+  .profile-read-book {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .profile-read-cover {
+    width: 76px;
+    height: 104px;
+  }
+
+  .profile-comment {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .profile-comment-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .library-assistant-header {
+    padding: 14px;
+  }
+
+  .library-assistant-messages {
+    padding: 13px;
+  }
+
+  .library-assistant-message-bubble {
+    max-width: 92%;
+  }
+
+  .library-assistant-suggestions {
+    flex-wrap: nowrap;
+    padding: 9px 12px 3px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .library-assistant-form {
+    padding-inline: 12px;
+  }
+
+  .library-assistant-submit {
+    padding-inline: 11px;
   }
 
   .resource-summary strong,

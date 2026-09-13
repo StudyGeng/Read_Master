@@ -8,6 +8,11 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.active == true;
     }
 
+    function isPublicProfile(userId) {
+      return firestore.exists(/databases/(default)/documents/publicProfiles/$(userId))
+        && firestore.get(/databases/(default)/documents/publicProfiles/$(userId)).data.isPublic == true;
+    }
+
     match /books/{bookId}/{fileName} {
       allow read: if request.auth != null || fileName.matches('cover-.*');
       allow create, update: if isAdmin()
@@ -16,7 +21,8 @@ service firebase.storage {
     }
 
     match /profile-images/{userId}/{fileName} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if (request.auth != null && request.auth.uid == userId)
+        || isPublicProfile(userId);
       allow create, update: if request.auth != null
         && request.auth.uid == userId
         && request.resource.size <= 2 * 1024 * 1024

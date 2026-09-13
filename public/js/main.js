@@ -1,4 +1,6 @@
 import { getCachedAdmin, getCachedUser, getCurrentUser, getDataModeLabel, isFirebaseEnabled } from "./firebase-service.js";
+import { initLibraryAssistant } from "./library-assistant.js";
+import { initNotifications } from "./notifications.js";
 import { $$ } from "./utils.js";
 
 function markActiveNav() {
@@ -51,6 +53,13 @@ async function renderAccountNav() {
   }
 }
 
+function initReaderTools() {
+  if (document.body.classList.contains("admin-page")) return;
+  initNotifications();
+  initLibraryAssistant();
+}
+
 markActiveNav();
 renderConfigNotices();
 renderAccountNav();
+initReaderTools();

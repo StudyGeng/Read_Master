@@ -1,13 +1,17 @@
 import { bindAdminShell, guardAdminPage } from "./admin-auth.js";
 import {
   createBook,
+  createNotification,
   deleteBook,
+  deleteNotification,
   deleteUser,
   getBook,
   isFirebaseEnabled,
   listAllBooks,
+  listAllNotifications,
   listUsers,
   seedDemoBooks,
+  setNotificationActive,
   updateBook
 } from "./firebase-service.js";
 import {
@@ -22,6 +26,7 @@ import {
 const page = document.body.dataset.adminPage;
 let adminBooks = [];
 let adminUsers = [];
+let adminNotifications = [];
 let activeBookId = "";
 
 function bookMatchesSearch(book, searchTerm) {
@@ -177,6 +182,72 @@ function renderUserRows(users) {
   `).join("");
 }
 
+function notificationKindLabel(kind) {
+  if (kind === "new-book") return "New book";
+  if (kind === "maintenance") return "Service update";
+  return "Announcement";
+}
+
+function renderNotificationRows(notifications) {
+  const notificationsList = $("#adminNotificationsList");
+  const notificationCount = $("#adminNotificationCount");
+  if (notificationCount) notificationCount.textContent = notifications.length;
+  if (!notificationsList) return;
+
+  if (!notifications.length) {
+    notificationsList.innerHTML = `
+      <p class="admin-notification-empty">
+        No notification updates yet. Create one to share library news with readers.
+      </p>
+    `;
+    return;
+  }
+
+  notificationsList.innerHTML = notifications.map((notification) => {
+    const statusClass = notification.active ? "" : "pending";
+    const statusLabel = notification.active ? "Active" : "Inactive";
+    const toggleLabel = notification.active ? "Deactivate" : "Activate";
+    const activityDate = notification.updatedAt || notification.createdAt;
+    const creator = notification.createdByName || "Administrator";
+    const linkCopy = notification.linkUrl
+      ? `<p class="admin-notification-link"><strong>Link:</strong> ${escapeHtml(notification.linkUrl)}</p>`
+      : "";
+
+    return `
+      <article class="admin-notification-card" data-admin-notification="${escapeAttribute(notification.id)}">
+        <div class="admin-notification-card-heading">
+          <div class="admin-notification-labels">
+            <span class="status-pill ${statusClass}">${statusLabel}</span>
+            <span class="admin-notification-kind">${escapeHtml(notificationKindLabel(notification.kind))}</span>
+          </div>
+          <small>${escapeHtml(formatDate(activityDate))} by ${escapeHtml(creator)}</small>
+        </div>
+        <h3>${escapeHtml(notification.title)}</h3>
+        <p class="admin-notification-message">${escapeHtml(notification.message)}</p>
+        ${linkCopy}
+        <div class="table-actions admin-notification-actions">
+          <button
+            class="table-action"
+            type="button"
+            data-toggle-notification="${escapeAttribute(notification.id)}"
+            data-notification-active="${notification.active ? "true" : "false"}"
+          >${toggleLabel}</button>
+          <button
+            class="table-action danger"
+            type="button"
+            data-delete-notification="${escapeAttribute(notification.id)}"
+          >Delete</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function refreshNotifications() {
+  adminNotifications = await listAllNotifications();
+  renderNotificationRows(adminNotifications);
+}
+
 async function refreshDashboard() {
   const dashboardMessage = $("#dashboardMessage");
   const errors = [];
@@ -190,17 +261,20 @@ async function refreshDashboard() {
     }
   };
 
-  const [books, users] = await Promise.all([
+  const [books, users, notifications] = await Promise.all([
     captureData(listAllBooks, "Books"),
-    captureData(listUsers, "Users")
+    captureData(listUsers, "Users"),
+    captureData(listAllNotifications, "Notifications")
   ]);
 
   adminBooks = books;
   adminUsers = users;
+  adminNotifications = notifications;
   renderStats(books);
   renderDashboardCharts(books);
   renderUserRows(users);
   renderBookRows(books);
+  renderNotificationRows(notifications);
 
   if (errors.length) {
     setMessage(dashboardMessage, errors.join(" "), "error");
@@ -212,6 +286,9 @@ function bindDashboardEvents() {
   const adminUserSearch = $("#adminUserSearch");
   const tableBody = $("#adminBooksTableBody");
   const usersTableBody = $("#adminUsersTableBody");
+  const notificationForm = $("#adminNotificationForm");
+  const notificationsList = $("#adminNotificationsList");
+  const notificationMessage = $("#notificationMessage");
   const dashboardMessage = $("#dashboardMessage");
   const seedBooksButton = $("[data-seed-books]");
 
@@ -256,6 +333,81 @@ function bindDashboardEvents() {
       await refreshDashboard();
     } catch (error) {
       setMessage(dashboardMessage, error.message, "error");
+    }
+  });
+
+  notificationForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = notificationForm.querySelector("button[type='submit']");
+    const formData = new FormData(notificationForm);
+    const shouldPublish = formData.get("active") === "on";
+
+    try {
+      submitButton.disabled = true;
+      submitButton.textContent = "Saving...";
+      await createNotification({
+        title: formData.get("title"),
+        message: formData.get("message"),
+        kind: formData.get("kind"),
+        linkUrl: formData.get("linkUrl"),
+        active: shouldPublish
+      });
+      notificationForm.reset();
+      notificationForm.elements.active.checked = true;
+      setMessage(
+        notificationMessage,
+        shouldPublish
+          ? "Update published. Readers can now see it in the notification bell."
+          : "Update saved as inactive.",
+        "success"
+      );
+      await refreshNotifications();
+    } catch (error) {
+      setMessage(notificationMessage, error.message, "error");
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Create Update";
+    }
+  });
+
+  notificationsList?.addEventListener("click", async (event) => {
+    const toggleButton = event.target.closest("[data-toggle-notification]");
+    const deleteButton = event.target.closest("[data-delete-notification]");
+    const actionButton = toggleButton || deleteButton;
+    if (!actionButton) return;
+
+    const notificationId = toggleButton?.dataset.toggleNotification
+      || deleteButton?.dataset.deleteNotification;
+    const notification = adminNotifications.find((item) => item.id === notificationId);
+    if (!notification) return;
+
+    if (deleteButton) {
+      const confirmed = window.confirm(`Delete the notification "${notification.title}"?`);
+      if (!confirmed) return;
+    }
+
+    try {
+      actionButton.disabled = true;
+
+      if (toggleButton) {
+        const activate = toggleButton.dataset.notificationActive !== "true";
+        await setNotificationActive(notificationId, activate);
+        setMessage(
+          notificationMessage,
+          activate
+            ? "Notification activated. Readers can now see it."
+            : "Notification deactivated and hidden from readers.",
+          "success"
+        );
+      } else {
+        await deleteNotification(notificationId);
+        setMessage(notificationMessage, "Notification deleted.", "success");
+      }
+
+      await refreshNotifications();
+    } catch (error) {
+      setMessage(notificationMessage, error.message, "error");
+      actionButton.disabled = false;
     }
   });
 

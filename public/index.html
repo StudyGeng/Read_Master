@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Read_Master Library</title>
-  <link rel="stylesheet" href="css/style.css?v=footer-mobile-fix-1">
-  <link rel="stylesheet" href="css/responsive.css?v=mobile-width-fix-1">
+  <link rel="stylesheet" href="css/style.css?v=community-widgets-1">
+  <link rel="stylesheet" href="css/responsive.css?v=community-widgets-1">
 </head>
 <body data-page="home">
   <header class="site-header">
@@ -19,7 +19,7 @@
 
     <nav class="site-nav" aria-label="Main navigation">
       <a href="index.html" data-nav="home">Home</a>
-      <a href="reading-list.html" data-nav="reading-list">Reading List</a>
+      <a href="reading-list.html" data-nav="reading-list">My Library</a>
       <a href="login.html" data-nav="login">Login/Signup</a>
     </nav>
   </header>
@@ -31,10 +31,10 @@
       <div class="hero-copy">
         <p class="eyebrow">Open access reading</p>
         <h1 id="heroTitle">Free e-books for students, readers, and lifelong learning.</h1>
-        <p class="hero-text">Browse approved digital resources, save useful books, and build a calm reading list for study.</p>
+        <p class="hero-text">Browse approved digital resources, favorite useful books, and keep your reading activity together.</p>
         <div class="hero-actions">
           <a class="btn primary" href="#libraryShelf">Browse Library</a>
-          <a class="btn secondary" href="reading-list.html">Reading List</a>
+          <a class="btn secondary" href="reading-list.html">My Library</a>
         </div>
 
         <div class="hero-metrics" aria-label="Library highlights">
@@ -61,24 +61,24 @@
     <section class="home-board" aria-label="Home book highlights">
       <section class="trend-showcase" aria-labelledby="trendingTitle">
         <div class="center-heading">
-          <p class="eyebrow">Popular / trending</p>
-          <h2 id="trendingTitle">This Week Trending Books</h2>
+          <p class="eyebrow">Most viewed and downloaded</p>
+          <h2 id="trendingTitle">Popular Books</h2>
         </div>
 
-        <div class="trend-carousel" aria-label="Trending book carousel">
-          <button class="carousel-button" type="button" data-trend-prev aria-label="Previous trending books">&lt;</button>
+        <div class="trend-carousel" aria-label="Popular book carousel">
+          <button class="carousel-button" type="button" data-trend-prev aria-label="Previous popular books">&lt;</button>
           <div class="trend-window">
             <div class="trend-track" id="trendingTrack">
-              <p class="loading-text">Loading trending books...</p>
+              <p class="loading-text">Loading popular books...</p>
             </div>
           </div>
-          <button class="carousel-button" type="button" data-trend-next aria-label="Next trending books">&gt;</button>
+          <button class="carousel-button" type="button" data-trend-next aria-label="Next popular books">&gt;</button>
         </div>
       </section>
 
       <section class="book-feature-stack" aria-label="Book updates">
         <div id="newReleaseSpotlight">
-          <p class="loading-text">Loading new release...</p>
+          <p class="loading-text">Loading recently added book...</p>
         </div>
         <div id="upcomingSpotlight">
           <p class="loading-text">Loading upcoming book...</p>
@@ -145,6 +145,7 @@
             <span>Sort</span>
             <select id="sortSelect">
               <option value="newest">Newest first</option>
+              <option value="popular">Most popular</option>
               <option value="title">Title A-Z</option>
               <option value="author">Author A-Z</option>
               <option value="coming-soon">Coming soon</option>
@@ -163,7 +164,7 @@
           </div>
           <div>
             <strong id="savedCount">0</strong>
-            <span>Saved books</span>
+            <span>Favorites</span>
           </div>
         </div>
 
@@ -198,7 +199,7 @@
     </p>
   </footer>
 
-  <script type="module" src="js/main.js?v=profile-role-2"></script>
-  <script type="module" src="js/books.js?v=reader-access-1"></script>
+  <script type="module" src="js/main.js?v=community-widgets-1"></script>
+  <script type="module" src="js/books.js?v=library-features-1"></script>
 </body>
 </html>

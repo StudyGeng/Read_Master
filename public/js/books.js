@@ -46,6 +46,35 @@ function allCatalogBooks() {
   return [...state.books, ...state.upcomingBooks];
 }
 
+function metricValue(value) {
+  const metric = Number(value || 0);
+  return Number.isFinite(metric) ? Math.max(0, metric) : 0;
+}
+
+function sortableBookDate(book) {
+  const timestamp = Date.parse(book.createdAt || book.releaseDate || "");
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function compareNewestBooks(a, b) {
+  return sortableBookDate(b) - sortableBookDate(a)
+    || String(a.title || "").localeCompare(String(b.title || ""));
+}
+
+function popularityScore(book) {
+  return metricValue(book.viewCount) + (3 * metricValue(book.downloadCount));
+}
+
+function comparePopularBooks(a, b) {
+  return popularityScore(b) - popularityScore(a)
+    || metricValue(b.trendScore) - metricValue(a.trendScore)
+    || compareNewestBooks(a, b);
+}
+
+function formatMetric(value) {
+  return new Intl.NumberFormat("en").format(metricValue(value));
+}
+
 function activeCatalogBooks() {
   return state.sort === "coming-soon" ? state.upcomingBooks : state.books;
 }
@@ -77,9 +106,10 @@ function matchingBooks() {
     })
     .sort((a, b) => {
       if (state.sort === "coming-soon") return String(a.releaseDate || "").localeCompare(String(b.releaseDate || ""));
+      if (state.sort === "popular") return comparePopularBooks(a, b);
       if (state.sort === "title") return a.title.localeCompare(b.title);
       if (state.sort === "author") return a.author.localeCompare(b.author);
-      return String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
+      return compareNewestBooks(a, b);
     });
 }
 
@@ -230,8 +260,8 @@ function renderBookCard(book) {
         </div>
         <div class="book-actions">
           <button class="btn primary" type="button" data-view-more-book="${escapeAttribute(book.id)}">View More</button>
-          <button class="btn secondary ${saved ? "saved" : ""}" type="button" data-save-book="${escapeAttribute(book.id)}">
-            ${saved ? "Saved" : "Save"}
+          <button class="btn secondary ${saved ? "saved" : ""}" type="button" aria-pressed="${saved}" data-save-book="${escapeAttribute(book.id)}">
+            ${saved ? "Favorited" : "Add to Favorites"}
           </button>
         </div>
       </div>
@@ -241,25 +271,12 @@ function renderBookCard(book) {
 
 function newestBooks(limit = 1) {
   return [...state.books]
-    .sort((a, b) => String(b.releaseDate || "").localeCompare(String(a.releaseDate || "")))
+    .sort(compareNewestBooks)
     .slice(0, limit);
 }
 
-function trendingBooks(limit = 4) {
-  return [...state.books]
-    .sort((a, b) => {
-      const aScore = Number(a.trendScore || 0);
-      const bScore = Number(b.trendScore || 0);
-      if (aScore !== bScore) return bScore - aScore;
-
-      const dateCompare = String(b.releaseDate || "").localeCompare(String(a.releaseDate || ""));
-      if (dateCompare) return dateCompare;
-
-      const aFallback = String(a.title || "").length + String(a.category || "").length;
-      const bFallback = String(b.title || "").length + String(b.category || "").length;
-      return bFallback - aFallback;
-    })
-    .slice(0, limit);
+function popularBooks(limit = 4) {
+  return [...state.books].sort(comparePopularBooks).slice(0, limit);
 }
 
 function renderTrendCard(book, index) {
@@ -273,17 +290,21 @@ function renderTrendCard(book, index) {
         ${coverContent}
       </button>
       <div class="trend-card-body">
-        <span class="trend-badge">Trend ${String(index + 1).padStart(2, "0")}</span>
+        <span class="trend-badge">Popular ${String(index + 1).padStart(2, "0")}</span>
         <h3>${escapeHtml(book.title)}</h3>
         <p>${escapeHtml(book.author)}</p>
+        <div class="book-activity-stats" aria-label="${formatMetric(book.viewCount)} views and ${formatMetric(book.downloadCount)} downloads">
+          <span><strong>${formatMetric(book.viewCount)}</strong> views</span>
+          <span><strong>${formatMetric(book.downloadCount)}</strong> downloads</span>
+        </div>
         <div class="tag-row">
           <span class="tag">${escapeHtml(book.category)}</span>
           <span class="tag">${escapeHtml(book.format)}</span>
         </div>
         <div class="book-actions">
           <button class="btn primary" type="button" data-view-more-book="${escapeAttribute(book.id)}">View More</button>
-          <button class="btn secondary ${isBookSaved(book.id) ? "saved" : ""}" type="button" data-save-book="${escapeAttribute(book.id)}">
-            ${isBookSaved(book.id) ? "Wishlisted" : "Wishlist"}
+          <button class="btn secondary ${isBookSaved(book.id) ? "saved" : ""}" type="button" aria-pressed="${isBookSaved(book.id)}" data-save-book="${escapeAttribute(book.id)}">
+            ${isBookSaved(book.id) ? "Favorited" : "Add to Favorites"}
           </button>
         </div>
       </div>
@@ -320,8 +341,8 @@ function renderWideBookFeature(book, options) {
         <div class="book-actions">
           ${primaryAction}
           ${viewMoreAction}
-          <button class="btn secondary ${saved ? "saved" : ""}" type="button" data-save-book="${escapeAttribute(book.id)}">
-            ${saved ? "Wishlisted" : "Wishlist"}
+          <button class="btn secondary ${saved ? "saved" : ""}" type="button" aria-pressed="${saved}" data-save-book="${escapeAttribute(book.id)}">
+            ${saved ? "Favorited" : "Add to Favorites"}
           </button>
         </div>
       </div>
@@ -369,8 +390,8 @@ function renderBookModal(book) {
         </dl>
         <div class="book-actions">
           ${readAction}
-          <button class="btn secondary ${saved ? "saved" : ""}" type="button" data-save-book="${escapeAttribute(book.id)}">
-            ${saved ? "Saved" : "Save"}
+          <button class="btn secondary ${saved ? "saved" : ""}" type="button" aria-pressed="${saved}" data-save-book="${escapeAttribute(book.id)}">
+            ${saved ? "Favorited" : "Add to Favorites"}
           </button>
         </div>
       </div>
@@ -456,7 +477,7 @@ function restartTrendTimer() {
 
 function renderHomeHighlights() {
   if (trendingTrack) {
-    const books = trendingBooks(5);
+    const books = popularBooks(5);
     trendingTrack.innerHTML = books.map(renderTrendCard).join("");
     restartTrendTimer();
   }
@@ -465,14 +486,15 @@ function renderHomeHighlights() {
     const [book] = newestBooks(1);
 
     if (!book) {
-      newReleaseSpotlight.innerHTML = `<p class="empty-state">No new release yet.</p>`;
+      newReleaseSpotlight.innerHTML = `<p class="empty-state">No recently added book yet.</p>`;
       return;
     }
 
     newReleaseSpotlight.innerHTML = renderWideBookFeature(book, {
       variant: "new-release-feature",
-      label: "New release",
-      heading: "Latest on the shelf",
+      label: "Library update",
+      heading: "Recently Added",
+      copy: `${book.createdAt || book.releaseDate ? `Added ${formatDate(book.createdAt || book.releaseDate)}. ` : ""}${book.description}`,
       primaryAction: "Preview Book"
     });
   }
@@ -527,7 +549,9 @@ function renderBooks() {
   const sourceBooks = activeCatalogBooks();
   catalogTitle.textContent = state.search.trim()
     ? `Results for “${state.search.trim()}”`
-    : state.sort === "coming-soon" ? "Coming soon books" : "Available books";
+    : state.sort === "coming-soon" ? "Coming soon books"
+      : state.sort === "popular" ? "Popular books"
+        : "Available books";
   totalCount.textContent = sourceBooks.length;
   visibleCount.textContent = books.length;
   savedCount.textContent = getSavedIds().length;

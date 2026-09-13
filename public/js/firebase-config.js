@@ -11,6 +11,8 @@ export const firebaseConfig = {
 export const firebaseCollections = {
   admins: "admins",
   books: "books",
+  notifications: "notifications",
+  publicProfiles: "publicProfiles",
   users: "users"
 };
 

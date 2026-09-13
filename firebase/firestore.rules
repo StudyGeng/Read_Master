@@ -20,6 +20,331 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function isPublicBookData(bookData) {
+      return bookData.licenseChecked == true
+        && bookData.licenseType in [
+          "Public Domain",
+          "Creative Commons",
+          "Open Educational Resource",
+          "Open Documentation",
+          "Open Resource",
+          "School-owned",
+          "Author-approved"
+        ]
+        && (
+          bookData.status == "published"
+          || bookData.status == "upcoming"
+        );
+    }
+
+    function isPublicBook(bookId) {
+      let bookPath = /databases/$(database)/documents/books/$(bookId);
+      return exists(bookPath) && isPublicBookData(get(bookPath).data);
+    }
+
+    function existingViewCount() {
+      return resource.data.keys().hasAny(["viewCount"])
+        ? resource.data.viewCount
+        : resource.data.get("trendScore", 0) * 12;
+    }
+
+    function existingDownloadCount() {
+      return resource.data.keys().hasAny(["downloadCount"])
+        ? resource.data.downloadCount
+        : resource.data.get("trendScore", 0) * 3;
+    }
+
+    function validPublicCounterUpdate() {
+      return isPublicBookData(resource.data)
+        && resource.data.status == "published"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "viewCount",
+          "downloadCount"
+        ])
+        && request.resource.data.keys().hasAll(["viewCount", "downloadCount"])
+        && request.resource.data.viewCount is int
+        && request.resource.data.downloadCount is int
+        && request.resource.data.viewCount >= 0
+        && request.resource.data.downloadCount >= 0
+        && (
+          (
+            request.resource.data.viewCount == existingViewCount() + 1
+            && request.resource.data.downloadCount == existingDownloadCount()
+          )
+          || (
+            signedIn()
+            && request.resource.data.viewCount == existingViewCount()
+            && request.resource.data.downloadCount == existingDownloadCount() + 1
+          )
+        );
+    }
+
+    function validReviewData(bookId, reviewId) {
+      return request.resource.data.keys().hasOnly([
+          "bookId",
+          "userId",
+          "userName",
+          "rating",
+          "comment",
+          "createdAt",
+          "updatedAt"
+        ])
+        && reviewId == request.auth.uid
+        && request.resource.data.bookId == bookId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() >= 1
+        && request.resource.data.userName.size() <= 80
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() >= 3
+        && request.resource.data.comment.size() <= 1000
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validLibraryActivityData(userId, bookId) {
+      return request.resource.data.keys().hasOnly([
+          "bookId",
+          "userId",
+          "firstOpenedAt",
+          "lastOpenedAt",
+          "openCount",
+          "lastReadAt",
+          "readCount",
+          "lastDownloadedAt",
+          "downloadCount",
+          "updatedAt"
+        ])
+        && request.resource.data.bookId == bookId
+        && request.resource.data.userId == userId
+        && request.resource.data.openCount is int
+        && request.resource.data.openCount >= 0
+        && request.resource.data.readCount is int
+        && request.resource.data.readCount >= 0
+        && request.resource.data.downloadCount is int
+        && request.resource.data.downloadCount >= 0
+        && (
+          request.resource.data.firstOpenedAt == null
+          || request.resource.data.firstOpenedAt is timestamp
+        )
+        && (
+          request.resource.data.lastOpenedAt == null
+          || request.resource.data.lastOpenedAt is timestamp
+        )
+        && (
+          request.resource.data.lastReadAt == null
+          || request.resource.data.lastReadAt is timestamp
+        )
+        && (
+          request.resource.data.lastDownloadedAt == null
+          || request.resource.data.lastDownloadedAt is timestamp
+        )
+        && request.resource.data.updatedAt is timestamp
+        && (
+          request.resource.data.openCount > 0
+          || request.resource.data.readCount > 0
+          || request.resource.data.downloadCount > 0
+        )
+        && (
+          request.resource.data.openCount == 0
+            ? request.resource.data.firstOpenedAt == null
+              && request.resource.data.lastOpenedAt == null
+            : request.resource.data.firstOpenedAt is timestamp
+              && request.resource.data.lastOpenedAt is timestamp
+        )
+        && (
+          request.resource.data.readCount == 0
+            ? request.resource.data.lastReadAt == null
+            : request.resource.data.lastReadAt is timestamp
+        )
+        && (
+          request.resource.data.downloadCount == 0
+            ? request.resource.data.lastDownloadedAt == null
+            : request.resource.data.lastDownloadedAt is timestamp
+        );
+    }
+
+    function publicProfilePath(userId) {
+      return /databases/$(database)/documents/publicProfiles/$(userId);
+    }
+
+    function isPublicProfile(userId) {
+      return exists(publicProfilePath(userId))
+        && get(publicProfilePath(userId)).data.isPublic == true;
+    }
+
+    function sharesReadingHistory(userId) {
+      return isPublicProfile(userId)
+        && get(publicProfilePath(userId)).data.showReadingHistory == true;
+    }
+
+    function validPublicProfileData(userId) {
+      return request.resource.data.keys().hasOnly([
+          "userId",
+          "displayName",
+          "avatarURL",
+          "bio",
+          "isPublic",
+          "showReadingHistory",
+          "joinedAt",
+          "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "userId",
+          "displayName",
+          "avatarURL",
+          "bio",
+          "isPublic",
+          "showReadingHistory",
+          "joinedAt",
+          "updatedAt"
+        ])
+        && request.resource.data.userId == userId
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 1
+        && request.resource.data.displayName.size() <= 80
+        && request.resource.data.avatarURL is string
+        && request.resource.data.avatarURL.size() <= 2048
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 300
+        && request.resource.data.isPublic is bool
+        && request.resource.data.showReadingHistory is bool
+        && (
+          request.resource.data.isPublic == true
+          || request.resource.data.showReadingHistory == false
+        )
+        && request.resource.data.joinedAt is string
+        && request.resource.data.joinedAt.size() <= 80
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validPublicReadingHistoryData(userId, bookId) {
+      return request.resource.data.keys().hasOnly([
+          "bookId",
+          "userId",
+          "readCount",
+          "lastReadAt",
+          "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "bookId",
+          "userId",
+          "readCount",
+          "lastReadAt",
+          "updatedAt"
+        ])
+        && request.resource.data.bookId == bookId
+        && request.resource.data.userId == userId
+        && request.resource.data.readCount is int
+        && request.resource.data.readCount > 0
+        && request.resource.data.lastReadAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validProfileCommentData(profileId, authorId) {
+      return request.resource.data.keys().hasOnly([
+          "profileId",
+          "authorId",
+          "authorName",
+          "authorPhotoURL",
+          "comment",
+          "createdAt",
+          "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "profileId",
+          "authorId",
+          "authorName",
+          "authorPhotoURL",
+          "comment",
+          "createdAt",
+          "updatedAt"
+        ])
+        && request.resource.data.profileId == profileId
+        && request.resource.data.authorId == authorId
+        && authorId == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() >= 1
+        && request.resource.data.authorName.size() <= 80
+        && request.resource.data.authorPhotoURL is string
+        && request.resource.data.authorPhotoURL.size() <= 2048
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() >= 3
+        && request.resource.data.comment.size() <= 500
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validNotificationData() {
+      return request.resource.data.keys().hasOnly([
+          "title",
+          "message",
+          "kind",
+          "linkUrl",
+          "active",
+          "createdBy",
+          "createdByName",
+          "createdAt",
+          "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "title",
+          "message",
+          "kind",
+          "linkUrl",
+          "active",
+          "createdBy",
+          "createdByName",
+          "createdAt",
+          "updatedAt"
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 1
+        && request.resource.data.title.size() <= 80
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 3
+        && request.resource.data.message.size() <= 400
+        && request.resource.data.kind in [
+          "announcement",
+          "new-book",
+          "maintenance"
+        ]
+        && request.resource.data.linkUrl is string
+        && request.resource.data.linkUrl.size() <= 500
+        && request.resource.data.active is bool
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdBy.size() >= 1
+        && request.resource.data.createdBy.size() <= 128
+        && request.resource.data.createdByName is string
+        && request.resource.data.createdByName.size() >= 1
+        && request.resource.data.createdByName.size() <= 80
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validNotificationReadData(userId, notificationId) {
+      return request.resource.data.keys().hasOnly([
+          "notificationId",
+          "userId",
+          "version",
+          "readAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "notificationId",
+          "userId",
+          "version",
+          "readAt"
+        ])
+        && request.resource.data.notificationId == notificationId
+        && request.resource.data.userId == userId
+        && request.resource.data.version is string
+        && request.resource.data.version.size() <= 80
+        && request.resource.data.readAt is timestamp;
+    }
+
     function validUserProfileCreate() {
       return request.resource.data.keys().hasOnly([
           "name",
@@ -61,27 +386,111 @@ service cloud.firestore {
       match /savedBooks/{savedBookId} {
         allow read, create, update, delete: if signedIn() && request.auth.uid == userId;
       }
+
+      match /libraryActivity/{bookId} {
+        allow get, list, delete: if ownsUserProfile(userId);
+        allow create, update: if ownsUserProfile(userId)
+          && validLibraryActivityData(userId, bookId)
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      match /notificationReads/{notificationId} {
+        allow get, list, delete: if ownsUserProfile(userId);
+        allow create, update: if ownsUserProfile(userId)
+          && validNotificationReadData(userId, notificationId)
+          && request.resource.data.readAt == request.time;
+      }
+    }
+
+    match /publicProfiles/{userId} {
+      allow get: if resource.data.isPublic == true
+        || ownsUserProfile(userId)
+        || isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if ownsUserProfile(userId)
+        && validPublicProfileData(userId)
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if ownsUserProfile(userId) || isAdmin();
+
+      match /readingHistory/{bookId} {
+        allow get, list: if sharesReadingHistory(userId)
+          || ownsUserProfile(userId)
+          || isAdmin();
+        allow create, update: if ownsUserProfile(userId)
+          && validPublicReadingHistoryData(userId, bookId)
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsUserProfile(userId) || isAdmin();
+      }
+
+      match /comments/{authorId} {
+        allow get, list: if isPublicProfile(userId)
+          || ownsUserProfile(userId)
+          || isAdmin();
+        allow create: if signedIn()
+          && isPublicProfile(userId)
+          && validProfileCommentData(userId, authorId)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if signedIn()
+          && isPublicProfile(userId)
+          && validProfileCommentData(userId, authorId)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "authorName",
+            "authorPhotoURL",
+            "comment",
+            "updatedAt"
+          ]);
+        allow delete: if signedIn()
+          && (
+            request.auth.uid == authorId
+            || request.auth.uid == userId
+            || isAdmin()
+          );
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if resource.data.active == true || isAdmin();
+      allow create: if isAdmin()
+        && validNotificationData()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin()
+        && validNotificationData()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin();
     }
 
     match /books/{bookId} {
-      allow get, list: if (
-          resource.data.licenseChecked == true
-          && resource.data.licenseType in [
-            "Public Domain",
-            "Creative Commons",
-            "Open Educational Resource",
-            "Open Documentation",
-            "Open Resource",
-            "School-owned",
-            "Author-approved"
-          ]
-          && (
-            resource.data.status == "published"
-            || resource.data.status == "upcoming"
-          )
-        )
-        || isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow get, list: if isPublicBookData(resource.data) || isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || validPublicCounterUpdate();
+
+      match /reviews/{reviewId} {
+        allow get, list: if isPublicBook(bookId) || isAdmin();
+        allow create: if signedIn()
+          && isPublicBook(bookId)
+          && validReviewData(bookId, reviewId)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if signedIn()
+          && isPublicBook(bookId)
+          && validReviewData(bookId, reviewId)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "userName",
+            "rating",
+            "comment",
+            "updatedAt"
+          ]);
+        allow delete: if (signedIn() && reviewId == request.auth.uid) || isAdmin();
+      }
     }
   }
 }

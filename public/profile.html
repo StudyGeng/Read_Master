@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profile | Read_Master Library</title>
-  <link rel="stylesheet" href="css/style.css?v=profile-settings-1">
-  <link rel="stylesheet" href="css/responsive.css?v=profile-settings-1">
-  <link rel="stylesheet" href="css/admin.css?v=profile-settings-1">
+  <link rel="stylesheet" href="css/style.css?v=community-widgets-1">
+  <link rel="stylesheet" href="css/responsive.css?v=community-widgets-1">
+  <link rel="stylesheet" href="css/admin.css?v=community-widgets-1">
 </head>
 <body data-page="profile">
   <header class="site-header">
@@ -20,7 +20,7 @@
 
     <nav class="site-nav" aria-label="Main navigation">
       <a href="index.html" data-nav="home">Home</a>
-      <a href="reading-list.html" data-nav="reading-list" data-reader-link>Reading List</a>
+      <a href="reading-list.html" data-nav="reading-list" data-reader-link>My Library</a>
       <a href="login.html" data-nav="login">Login/Signup</a>
     </nav>
   </header>
@@ -35,7 +35,8 @@
         <div>
           <p class="eyebrow" data-profile-kind>Reader profile</p>
           <h1 data-user-name>Reader</h1>
-          <p class="profile-email" data-user-email>reader@example.com</p>
+          <p class="profile-email" data-user-email data-private-profile-email>reader@example.com</p>
+          <p class="profile-public-bio" data-user-bio hidden></p>
         </div>
       </div>
 
@@ -45,7 +46,7 @@
             <p class="eyebrow">Account</p>
             <h2 data-profile-heading>Your reading space</h2>
           </div>
-          <button class="btn secondary" type="button" data-edit-profile aria-expanded="false" aria-controls="profileSettings">Edit Profile</button>
+          <button class="btn secondary" type="button" data-edit-profile data-profile-owner-only aria-expanded="false" aria-controls="profileSettings">Edit Profile</button>
         </div>
 
         <dl class="profile-meta">
@@ -54,8 +55,12 @@
             <dd data-user-role>User</dd>
           </div>
           <div data-saved-stat>
-            <dt>Saved books</dt>
+            <dt>Favorites</dt>
             <dd data-user-saved-count>0</dd>
+          </div>
+          <div data-read-stat>
+            <dt>Books read</dt>
+            <dd data-user-read-count>0</dd>
           </div>
           <div data-member-stat>
             <dt>Member since</dt>
@@ -90,6 +95,24 @@
               <span>Display name</span>
               <input name="name" type="text" autocomplete="name" required maxlength="80" data-profile-name-input>
             </label>
+
+            <label class="field" data-reader-community-setting>
+              <span>Public bio</span>
+              <textarea name="bio" rows="3" maxlength="300" placeholder="Tell other readers what you enjoy reading." data-profile-bio-input></textarea>
+            </label>
+
+            <fieldset class="profile-privacy-settings" data-reader-community-setting>
+              <legend>Community profile</legend>
+              <label class="checkbox-row">
+                <input name="isPublic" type="checkbox" data-profile-public-input>
+                <span>Allow other readers to visit my public profile and leave comments.</span>
+              </label>
+              <label class="checkbox-row">
+                <input name="showReadingHistory" type="checkbox" data-profile-history-input>
+                <span>Show the books I have read and my read-book count.</span>
+              </label>
+              <small class="field-hint">Your email, password settings, favorites, downloads, and opened-book history always stay private.</small>
+            </fieldset>
 
             <button class="btn primary" type="submit">Save Profile</button>
           </form>
@@ -137,12 +160,56 @@
         </section>
 
         <div class="action-row">
-          <a class="btn primary" href="reading-list.html" data-reader-action>Reading List</a>
+          <a class="btn primary" href="reading-list.html" data-reader-action data-profile-owner-only>My Library</a>
           <a class="btn secondary" href="index.html#libraryShelf" data-reader-action>Browse Library</a>
           <a class="btn primary" href="admin/dashboard.html" data-admin-action hidden>Dashboard</a>
-          <button class="btn secondary" type="button" data-user-logout>Logout</button>
+          <button class="btn secondary" type="button" data-user-logout data-profile-owner-only>Logout</button>
         </div>
       </div>
+    </section>
+
+    <section class="profile-community" data-reader-community hidden aria-label="Reader community profile">
+      <p class="profile-community-notice" data-profile-community-notice hidden></p>
+
+      <article class="profile-community-card" aria-labelledby="readingHistoryTitle">
+        <div class="profile-community-heading">
+          <div>
+            <p class="eyebrow">Shared reading</p>
+            <h2 id="readingHistoryTitle">Read history</h2>
+          </div>
+          <strong class="profile-read-total" data-public-read-count>0 books read</strong>
+        </div>
+        <div class="profile-read-grid" data-public-reading-grid aria-live="polite"></div>
+        <p class="empty-state" data-public-reading-empty>Loading shared reading history...</p>
+      </article>
+
+      <article class="profile-community-card profile-comment-wall" aria-labelledby="profileCommentsTitle">
+        <div class="profile-community-heading">
+          <div>
+            <p class="eyebrow">Reader wall</p>
+            <h2 id="profileCommentsTitle">Profile comments</h2>
+          </div>
+          <span class="review-summary" data-profile-comment-count>No comments yet</span>
+        </div>
+
+        <p class="profile-comment-auth" data-profile-comment-auth hidden>
+          <a href="login.html">Sign in</a> to leave a friendly comment for this reader.
+        </p>
+
+        <form class="review-form profile-comment-form" data-profile-comment-form hidden>
+          <label class="field">
+            <span>Your comment</span>
+            <textarea name="comment" rows="4" required minlength="3" maxlength="500" placeholder="Share an encouraging note or reading suggestion."></textarea>
+          </label>
+          <p class="form-message" data-profile-comment-message role="status" hidden></p>
+          <div class="review-form-actions">
+            <button class="btn secondary" type="button" data-profile-comment-cancel hidden>Reset</button>
+            <button class="btn primary" type="submit" data-profile-comment-submit>Post Comment</button>
+          </div>
+        </form>
+
+        <div class="profile-comments-list" data-profile-comments-list aria-live="polite"></div>
+      </article>
     </section>
   </main>
 
@@ -157,7 +224,7 @@
 
     <nav class="footer-links" aria-label="Footer navigation">
       <a href="index.html">Home</a>
-      <a href="reading-list.html" data-reader-link>Reading List</a>
+      <a href="reading-list.html" data-reader-link>My Library</a>
     </nav>
 
     <p class="footer-note">
@@ -166,7 +233,7 @@
     </p>
   </footer>
 
-  <script type="module" src="js/main.js?v=profile-settings-1"></script>
-  <script type="module" src="js/user-profile.js?v=profile-settings-1"></script>
+  <script type="module" src="js/main.js?v=community-widgets-1"></script>
+  <script type="module" src="js/user-profile.js?v=community-profile-1"></script>
 </body>
 </html>

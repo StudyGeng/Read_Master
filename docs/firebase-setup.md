@@ -57,6 +57,8 @@ Use these collections:
 - `admins`
 - `books`
 - `users`
+- `publicProfiles` (created automatically for readers; private by default)
+- `notifications` (created through the administrator dashboard)
 
 Deploy or copy the rules from:
 
@@ -74,7 +76,7 @@ Deploy or copy the rules from:
 firebase/storage.rules
 ```
 
-Storage is also used for reader profile photos. The included rule limits photos to the account owner, accepted image formats, and files smaller than 2 MB.
+Storage is also used for reader profile photos. The included rules limit uploads to the account owner, accepted image formats, and files smaller than 2 MB. A photo becomes readable by other visitors only when its reader opts in to a public profile.
 
 ## 6. Deploy Hosting and Rules
 
@@ -83,6 +85,8 @@ From the project directory, run:
 ```bash
 npx firebase-tools deploy --only hosting,firestore,storage --project read-master-library
 ```
+
+A hosting-only deployment will not repair a `Missing or insufficient permissions` error for reviews or community features. Publish the Firestore and Storage rules too. Reviews additionally require the book's parent document to exist in Firestore with a checked licence and public status; locally displayed sample books do not count. In the admin dashboard, use **Load Demo Books** for sample records or add real, properly licensed books.
 
 ## 7. Test
 
@@ -96,3 +100,7 @@ Test these flows:
 - Admin can log in.
 - Admin can add new released books after checking the legal source/license confirmation.
 - Admin can edit and delete books.
+- A signed-in reader can post, edit, and delete their review on a real published Firestore book.
+- A reader can opt in to a public profile and optionally share completed-book history; visitors cannot see their email or private activity.
+- A second signed-in reader can leave and update one comment on a public profile.
+- Admin-published notifications appear in the reader bell, and read status is private to each reader.
