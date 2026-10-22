@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Read_Master Library</title>
+  <link rel="icon" type="image/svg+xml" href="assets/icons/read-master-logo.svg?v=brand-2">
+  <title>Read_Master — A world of books, open to everyone</title>
+  <meta name="description" content="Discover a curated collection of free e-books. Explore stories, save favorites, and read wherever curiosity takes you.">
   <link rel="stylesheet" href="css/style.css?v=community-widgets-1">
   <link rel="stylesheet" href="css/responsive.css?v=community-widgets-1">
+  <link rel="stylesheet" href="css/editorial.css?v=modern-library-1">
+  <link rel="stylesheet" href="css/motion-polish.css?v=reader-polish-1">
 </head>
 <body data-page="home">
   <header class="site-header">
@@ -19,8 +23,9 @@
 
     <nav class="site-nav" aria-label="Main navigation">
       <a href="index.html" data-nav="home">Home</a>
+      <a href="#libraryShelf">Explore</a>
       <a href="reading-list.html" data-nav="reading-list">My Library</a>
-      <a href="login.html" data-nav="login">Login/Signup</a>
+      <a class="nav-cta" href="login.html" data-nav="login">Sign in</a>
     </nav>
   </header>
 
@@ -29,54 +34,71 @@
 
     <section class="library-hero" aria-labelledby="heroTitle">
       <div class="hero-copy">
-        <p class="eyebrow">Open access reading</p>
-        <h1 id="heroTitle">Free e-books for students, readers, and lifelong learning.</h1>
-        <p class="hero-text">Browse approved digital resources, favorite useful books, and keep your reading activity together.</p>
+        <p class="eyebrow">An open door to discovery</p>
+        <h1 id="heroTitle">Lose yourself <em>in a good book.</em></h1>
+        <p class="hero-text">A thoughtfully curated world of free e-books. Find your next favorite, save it for later, and let every page take you somewhere new.</p>
         <div class="hero-actions">
-          <a class="btn primary" href="#libraryShelf">Browse Library</a>
-          <a class="btn secondary" href="reading-list.html">My Library</a>
+          <a class="btn primary" href="#libraryShelf">Explore the library <span aria-hidden="true">↗</span></a>
+          <a class="btn secondary" href="reading-list.html">Your reading list <span aria-hidden="true">→</span></a>
         </div>
 
         <div class="hero-metrics" aria-label="Library highlights">
           <div>
-            <strong>Free</strong>
-            <span>No payment needed</span>
+            <strong>01 /</strong>
+            <span>Always free</span>
           </div>
           <div>
-            <strong>Legal</strong>
-            <span>Reviewed resources</span>
+            <strong>02 /</strong>
+            <span>Thoughtfully curated</span>
           </div>
           <div>
-            <strong>Any device</strong>
-            <span>Responsive layout</span>
+            <strong>03 /</strong>
+            <span>Ready to read anywhere</span>
           </div>
         </div>
       </div>
 
-      <div class="hero-banner-media">
-        <img src="assets/images/library-banner.png" alt="Green and white digital library with books, plants, and an e-reader">
+      <div class="hero-banner-media" aria-label="A selection of books from the library">
+        <div class="hero-orbit" aria-hidden="true"></div>
+        <img class="hero-book-cover hero-book-left" src="assets/covers/gutenberg-frankenstein.svg" alt="Frankenstein book cover">
+        <img class="hero-book-cover hero-book-center" src="assets/covers/gutenberg-pride-and-prejudice.svg" alt="Pride and Prejudice book cover">
+        <img class="hero-book-cover hero-book-right" src="assets/covers/gutenberg-sherlock-holmes.svg" alt="Sherlock Holmes book cover">
+        <div class="hero-art-caption"><span>THE READING ROOM</span><span>Free books · Endless possibilities</span></div>
       </div>
     </section>
 
+    <section class="discovery-strip" aria-label="What you can do with Read_Master" data-reveal>
+      <div class="discovery-item"><span aria-hidden="true">✦</span><p><strong>Discover</strong> titles for every kind of curiosity</p></div>
+      <div class="discovery-item"><span aria-hidden="true">◎</span><p><strong>Collect</strong> the stories you want to revisit</p></div>
+      <div class="discovery-item"><span aria-hidden="true">↗</span><p><strong>Read</strong> at your pace, wherever you are</p></div>
+    </section>
+
     <section class="home-board" aria-label="Home book highlights">
-      <section class="trend-showcase" aria-labelledby="trendingTitle">
-        <div class="center-heading">
-          <p class="eyebrow">Most viewed and downloaded</p>
-          <h2 id="trendingTitle">Popular Books</h2>
+      <section class="trend-showcase" aria-labelledby="trendingTitle" data-reveal>
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">The reader's edit / 01</p>
+            <h2 id="trendingTitle">Books making <em>waves.</em></h2>
+          </div>
+          <p>The stories and ideas our readers keep coming back to. Find one that speaks to you.</p>
         </div>
 
         <div class="trend-carousel" aria-label="Popular book carousel">
-          <button class="carousel-button" type="button" data-trend-prev aria-label="Previous popular books">&lt;</button>
+          <button class="carousel-button" type="button" data-trend-prev aria-label="Previous popular books">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+          </button>
           <div class="trend-window">
             <div class="trend-track" id="trendingTrack">
               <p class="loading-text">Loading popular books...</p>
             </div>
           </div>
-          <button class="carousel-button" type="button" data-trend-next aria-label="Next popular books">&gt;</button>
+          <button class="carousel-button" type="button" data-trend-next aria-label="Next popular books">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
+          </button>
         </div>
       </section>
 
-      <section class="book-feature-stack" aria-label="Book updates">
+      <section class="book-feature-stack" aria-label="Book updates" data-reveal>
         <div id="newReleaseSpotlight">
           <p class="loading-text">Loading recently added book...</p>
         </div>
@@ -86,7 +108,13 @@
       </section>
     </section>
 
-    <section class="catalog-shell" id="libraryShelf" aria-label="Free e-book catalog">
+    <div class="catalog-intro" data-reveal>
+      <p class="eyebrow">The collection / 02</p>
+      <h2>Follow your <em>curiosity.</em></h2>
+      <p>From classic fiction to practical guides, there is always something new to explore.</p>
+    </div>
+
+    <section class="catalog-shell" id="libraryShelf" aria-label="Free e-book catalog" data-reveal>
       <aside class="filter-panel">
         <div class="panel-heading">
           <p class="eyebrow">Free resources</p>
@@ -101,7 +129,7 @@
               id="searchInput"
               type="search"
               role="combobox"
-              placeholder="Try “coding” or “mystery”"
+              placeholder="Try coding or mystery"
               autocomplete="off"
               aria-controls="searchSuggestions"
               aria-expanded="false"
@@ -175,6 +203,15 @@
         <p class="empty-state" id="emptyState" hidden>No books found.</p>
       </section>
     </section>
+
+    <section class="reading-cta" aria-labelledby="readingCtaTitle" data-reveal>
+      <div>
+        <p class="eyebrow">Your next chapter awaits</p>
+        <h2 id="readingCtaTitle">The best stories deserve a place to <em>stay.</em></h2>
+        <p>Keep the books you love close and pick up right where you left off.</p>
+      </div>
+      <a class="btn primary" href="reading-list.html">Visit My Library <span aria-hidden="true">↗</span></a>
+    </section>
   </main>
 
   <div class="modal-backdrop" id="bookModal" hidden>
@@ -193,13 +230,20 @@
       </span>
     </div>
 
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="#libraryShelf">Explore books</a>
+      <a href="reading-list.html">My Library</a>
+      <a href="login.html">Sign in</a>
+    </nav>
+
     <p class="footer-note">
-      <strong>Free digital reading resources.</strong>
-      <span>Open access books for study and personal reading.</span>
+      <strong>Open stories. Endless possibility.</strong>
+      <span>Free digital reading for curious minds everywhere.</span>
     </p>
   </footer>
 
   <script type="module" src="js/main.js?v=community-widgets-1"></script>
   <script type="module" src="js/books.js?v=library-features-1"></script>
+  <script type="module" src="js/editorial-motion.js?v=modern-library-1"></script>
 </body>
 </html>

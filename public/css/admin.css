@@ -70,7 +70,7 @@
 }
 
 .auth-brand .brand-mark {
-  background: url("../assets/icons/read-master-logo.svg") center/contain no-repeat;
+  background: url("../assets/icons/read-master-logo.svg?v=brand-2") center/contain no-repeat;
   border: 0;
 }
 

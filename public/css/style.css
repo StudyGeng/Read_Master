@@ -94,11 +94,11 @@ img {
   flex: 0 0 auto;
   width: 46px;
   height: 46px;
-  border-radius: 8px;
-  background: url("../assets/icons/read-master-logo.svg") center/contain no-repeat;
+  border-radius: 50%;
+  background: url("../assets/icons/read-master-logo.svg?v=brand-2") center/contain no-repeat;
   color: transparent;
   font-size: 0;
-  box-shadow: 0 10px 22px rgba(18, 61, 42, 0.16);
+  box-shadow: 0 8px 20px rgba(16, 13, 18, 0.18);
 }
 
 .brand strong,

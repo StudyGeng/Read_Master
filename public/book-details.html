@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/read-master-logo.svg?v=brand-2">
   <title>Book Details | Read_Master Library</title>
   <link rel="stylesheet" href="css/style.css?v=community-widgets-1">
   <link rel="stylesheet" href="css/responsive.css?v=community-widgets-1">
+  <link rel="stylesheet" href="css/editorial.css?v=modern-library-1">
+  <link rel="stylesheet" href="css/detail-experience.css?v=detail-experience-1">
 </head>
 <body data-page="book-details">
   <header class="site-header">
@@ -19,28 +22,42 @@
 
     <nav class="site-nav" aria-label="Main navigation">
       <a href="index.html" data-nav="home">Home</a>
+      <a href="index.html#libraryShelf">Explore</a>
       <a href="reading-list.html" data-nav="reading-list">My Library</a>
-      <a href="login.html" data-nav="login">Login/Signup</a>
+      <a class="nav-cta" href="login.html" data-nav="login">Sign in</a>
     </nav>
   </header>
 
   <main class="app-main">
     <p class="system-note" data-config-notice hidden></p>
 
-    <a class="back-link" href="index.html">Back to home</a>
+    <a class="back-link" href="index.html#libraryShelf" aria-label="Back to book catalog">← Back to the catalog</a>
 
     <section class="details-layout" id="bookDetails" aria-live="polite">
-      <div class="book-cover-large" id="detailCover">
-        <span id="detailInitials">RM</span>
+      <div class="detail-art-panel">
+        <div class="detail-art-orbit" aria-hidden="true"></div>
+        <div class="book-cover-large" id="detailCover">
+          <span class="cover-initials" id="detailInitials">RM</span>
+        </div>
+        <div class="detail-art-caption" aria-hidden="true">
+          <span>Read_Master collection</span>
+          <span id="detailCoverCategory">Selected book</span>
+        </div>
       </div>
 
       <article class="details-content">
-        <p class="eyebrow" id="detailCategory">Book details</p>
-        <h1 id="detailTitle">Loading book...</h1>
-        <p class="meta-line" id="detailMeta"></p>
-        <p class="details-description" id="detailDescription"></p>
+        <div class="detail-heading">
+          <p class="eyebrow" id="detailCategory">Book details</p>
+          <h1 id="detailTitle">Loading book...</h1>
+          <p class="meta-line" id="detailMeta"></p>
+        </div>
 
-        <dl class="details-list">
+        <div class="detail-overview">
+          <h2>About this book</h2>
+          <p class="details-description" id="detailDescription"></p>
+        </div>
+
+        <dl class="details-list" aria-label="Book information">
           <div>
             <dt>Format</dt>
             <dd id="detailFormat">-</dd>
@@ -67,29 +84,47 @@
           </div>
         </dl>
 
-        <p class="book-access-note" id="bookAccessMessage" aria-live="polite">Checking reader access...</p>
+        <div class="detail-actions-panel">
+          <p class="book-access-note" id="bookAccessMessage" aria-live="polite">Checking reader access...</p>
 
-        <div class="action-row">
-          <button class="btn primary" id="previewResourceButton" type="button">Read Preview</button>
-          <button class="btn secondary" id="readResourceButton" type="button">Checking Access...</button>
-          <button class="btn secondary" id="downloadResourceButton" type="button">Checking Access...</button>
-          <button class="btn secondary" id="saveBookButton" type="button">Save Book</button>
+          <div class="action-row">
+            <button class="btn primary" id="previewResourceButton" type="button">Read Preview</button>
+            <button class="btn secondary" id="readResourceButton" type="button">Checking Access...</button>
+            <button class="btn secondary" id="downloadResourceButton" type="button">Checking Access...</button>
+            <button class="btn secondary" id="saveBookButton" type="button">Save Book</button>
+          </div>
         </div>
       </article>
     </section>
 
-    <section class="resource-reader" id="resourceReader" hidden aria-live="polite">
+    <section class="resource-reader" id="resourceReader" hidden aria-labelledby="readerTitle">
       <div class="reader-toolbar">
         <div>
-          <p class="eyebrow">Preview</p>
+          <p class="eyebrow" id="readerEyebrow">A look inside</p>
           <h2 id="readerTitle">Read inside Read_Master</h2>
+          <p class="reader-intro" id="readerIntro">Explore this title before opening the full resource.</p>
         </div>
         <div class="reader-toolbar-actions">
           <button class="btn secondary" id="readerReadButton" type="button">Checking Access...</button>
           <button class="btn secondary" id="readerDownloadButton" type="button">Checking Access...</button>
         </div>
       </div>
+      <div class="reader-progress" id="readerProgress" hidden>
+        <label for="readerProgressBar" id="readerProgressText">Section 1 of 1</label>
+        <progress id="readerProgressBar" max="1" value="1">1 of 1</progress>
+      </div>
       <div class="reader-frame" id="resourceFrame" tabindex="0" aria-label="Book preview"></div>
+    </section>
+
+    <section class="detail-related" id="detailRelated" aria-labelledby="relatedTitle" hidden>
+      <div class="detail-related-heading">
+        <div>
+          <p class="eyebrow">Keep exploring</p>
+          <h2 id="relatedTitle">More from the library</h2>
+        </div>
+        <a href="index.html#libraryShelf">Browse all books <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="detail-related-grid" id="detailRelatedGrid"></div>
     </section>
 
     <section class="book-reviews" id="bookReviews" aria-labelledby="reviewsTitle">
@@ -155,5 +190,6 @@
 
   <script type="module" src="js/main.js?v=community-widgets-1"></script>
   <script type="module" src="js/book-details.js?v=community-profile-links-1"></script>
+  <script type="module" src="js/editorial-motion.js?v=modern-library-1"></script>
 </body>
 </html>

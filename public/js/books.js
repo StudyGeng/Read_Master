@@ -28,7 +28,15 @@ const totalCount = $("#totalCount");
 const visibleCount = $("#visibleCount");
 const savedCount = $("#savedCount");
 const catalogTitle = $("#catalogTitle");
+const libraryContent = $(".library-content");
+const catalogFilterStatus = document.createElement("p");
+catalogFilterStatus.className = "catalog-filter-status";
+catalogFilterStatus.setAttribute("role", "status");
+catalogFilterStatus.hidden = true;
+catalogTitle.closest(".content-toolbar")?.after(catalogFilterStatus);
 const trendingTrack = $("#trendingTrack");
+const trendCarousel = trendingTrack?.closest(".trend-carousel");
+const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 const newReleaseSpotlight = $("#newReleaseSpotlight");
 const upcomingSpotlight = $("#upcomingSpotlight");
 const trendPreviousButton = $("[data-trend-prev]");
@@ -38,9 +46,13 @@ const modalBookContent = $("#modalBookContent");
 
 let trendTimer = null;
 let trendSliding = false;
+let trendSlideTimeout = null;
+let trendSlideFrame = null;
 let eventsBound = false;
 let activeModalBookId = "";
+let modalReturnFocus = null;
 let activeSuggestionIndex = -1;
+let filterChangeNote = "";
 
 function allCatalogBooks() {
   return [...state.books, ...state.upcomingBooks];
@@ -79,8 +91,8 @@ function activeCatalogBooks() {
   return state.sort === "coming-soon" ? state.upcomingBooks : state.books;
 }
 
-function uniqueValues(key) {
-  return [...new Set(allCatalogBooks().map((book) => book[key]).filter(Boolean))].sort();
+function uniqueValues(books, key) {
+  return [...new Set(books.map((book) => book[key]).filter(Boolean))].sort();
 }
 
 function matchingBooks() {
@@ -111,6 +123,54 @@ function matchingBooks() {
       if (state.sort === "author") return a.author.localeCompare(b.author);
       return compareNewestBooks(a, b);
     });
+}
+
+function clearConflictingCategoryFilters() {
+  if (matchingBooks().length || !allCatalogBooks().length) return;
+
+  const cleared = [];
+  if (state.search.trim()) {
+    state.search = "";
+    searchInput.value = "";
+    clearSearchButton.hidden = true;
+    closeSearchSuggestions();
+    cleared.push("search");
+  }
+  if (!matchingBooks().length && state.format !== "All") {
+    state.format = "All";
+    formatSelect.value = "All";
+    cleared.push("format");
+  }
+  if (!matchingBooks().length && state.sort === "coming-soon"
+    && state.books.some((book) => state.category === "All" || book.category === state.category)) {
+    state.sort = "newest";
+    sortSelect.value = "newest";
+    cleared.push("coming soon view");
+  }
+  if (!matchingBooks().length && state.category !== "All") {
+    state.category = "All";
+    cleared.push("unavailable category");
+  }
+  filterChangeNote = cleared.length
+    ? `Reset ${cleared.join(", ")} to show available books.`
+    : "";
+}
+
+function revealCatalogResults() {
+  const firstResult = bookGrid.firstElementChild || emptyState;
+  if (!firstResult || !libraryContent) return;
+
+  const top = firstResult.getBoundingClientRect().top;
+  const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height || 72;
+  const safeTop = headerHeight + 18;
+  const usefulBottom = Math.min(window.innerHeight - 80, window.innerHeight * 0.72);
+  if (top >= safeTop && top < usefulBottom) return;
+
+  const contentTop = libraryContent.getBoundingClientRect().top;
+  window.scrollTo({
+    top: Math.max(0, window.scrollY + contentTop - safeTop),
+    behavior: reducedMotionQuery?.matches ? "auto" : "smooth"
+  });
 }
 
 function suggestedBooks() {
@@ -189,6 +249,7 @@ function renderSearchSuggestions() {
 }
 
 function applySearch(searchTerm, { focus = false, resetFilters = false } = {}) {
+  filterChangeNote = "";
   if (resetFilters) {
     state.category = "All";
     state.format = "All";
@@ -403,10 +464,12 @@ function openBookModal(bookId) {
   const book = findBook(bookId);
   if (!book || !bookModal || !modalBookContent) return;
 
+  modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   activeModalBookId = book.id;
   renderBookModal(book);
   bookModal.hidden = false;
   document.body.classList.add("modal-open");
+  bookModal.querySelector("[data-modal-close]")?.focus();
 }
 
 function closeBookModal() {
@@ -416,25 +479,62 @@ function closeBookModal() {
   bookModal.hidden = true;
   modalBookContent.innerHTML = "";
   document.body.classList.remove("modal-open");
+  if (modalReturnFocus?.isConnected) modalReturnFocus.focus();
+  modalReturnFocus = null;
+}
+
+function getTrendStep() {
+  if (!trendingTrack || trendingTrack.children.length < 2) return null;
+
+  const firstCard = trendingTrack.firstElementChild;
+  const viewportWidth = trendingTrack.parentElement?.getBoundingClientRect().width || 0;
+  const cardWidth = firstCard.getBoundingClientRect().width;
+  if (!viewportWidth || !cardWidth) return null;
+
+  const styles = window.getComputedStyle(trendingTrack);
+  const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+  const contentWidth = (cardWidth * trendingTrack.children.length)
+    + (gap * (trendingTrack.children.length - 1));
+  return contentWidth > viewportWidth + 1 ? cardWidth + gap : null;
+}
+
+function resetTrendSlide() {
+  window.clearTimeout(trendSlideTimeout);
+  window.cancelAnimationFrame(trendSlideFrame);
+  trendSlideTimeout = null;
+  trendSlideFrame = null;
+  trendSliding = false;
+  if (!trendingTrack) return;
+  trendingTrack.style.transition = "";
+  trendingTrack.style.transform = "";
+}
+
+function stopTrendTimer() {
+  window.clearInterval(trendTimer);
+  trendTimer = null;
 }
 
 function slideTrendNext() {
-  if (!trendingTrack || trendSliding || trendingTrack.children.length <= 3) return;
+  const distance = getTrendStep();
+  if (!distance || trendSliding) return;
 
   const firstCard = trendingTrack.firstElementChild;
-  const styles = window.getComputedStyle(trendingTrack);
-  const gap = Number.parseFloat(styles.columnGap || styles.gap || "0");
-  const distance = firstCard.getBoundingClientRect().width + gap;
+  if (reducedMotionQuery?.matches) {
+    trendingTrack.append(firstCard);
+    return;
+  }
 
   trendSliding = true;
   trendingTrack.style.transition = "transform 520ms ease";
   trendingTrack.style.transform = `translateX(-${distance}px)`;
 
-  window.setTimeout(() => {
+  trendSlideTimeout = window.setTimeout(() => {
+    trendSlideTimeout = null;
     trendingTrack.append(firstCard);
     trendingTrack.style.transition = "none";
     trendingTrack.style.transform = "translateX(0)";
-    window.requestAnimationFrame(() => {
+    trendSlideFrame = window.requestAnimationFrame(() => {
+      trendSlideFrame = null;
       trendingTrack.style.transition = "";
       trendSliding = false;
     });
@@ -442,24 +542,24 @@ function slideTrendNext() {
 }
 
 function slideTrendPrevious() {
-  if (!trendingTrack || trendSliding || trendingTrack.children.length <= 3) return;
+  const distance = getTrendStep();
+  if (!distance || trendSliding) return;
 
   const lastCard = trendingTrack.lastElementChild;
   trendingTrack.prepend(lastCard);
-
-  const styles = window.getComputedStyle(trendingTrack);
-  const gap = Number.parseFloat(styles.columnGap || styles.gap || "0");
-  const distance = lastCard.getBoundingClientRect().width + gap;
+  if (reducedMotionQuery?.matches) return;
 
   trendSliding = true;
   trendingTrack.style.transition = "none";
   trendingTrack.style.transform = `translateX(-${distance}px)`;
 
-  window.requestAnimationFrame(() => {
+  trendSlideFrame = window.requestAnimationFrame(() => {
+    trendSlideFrame = null;
     trendingTrack.style.transition = "transform 520ms ease";
     trendingTrack.style.transform = "translateX(0)";
 
-    window.setTimeout(() => {
+    trendSlideTimeout = window.setTimeout(() => {
+      trendSlideTimeout = null;
       trendingTrack.style.transition = "";
       trendSliding = false;
     }, 540);
@@ -467,10 +567,16 @@ function slideTrendPrevious() {
 }
 
 function restartTrendTimer() {
-  window.clearInterval(trendTimer);
-  trendTimer = null;
+  stopTrendTimer();
+  const canSlide = Boolean(getTrendStep());
+  if (trendPreviousButton) trendPreviousButton.disabled = !canSlide;
+  if (trendNextButton) trendNextButton.disabled = !canSlide;
 
-  if (trendingTrack && trendingTrack.children.length > 3) {
+  if (canSlide
+    && !reducedMotionQuery?.matches
+    && !document.hidden
+    && !trendCarousel?.matches(":hover")
+    && !trendCarousel?.contains(document.activeElement)) {
     trendTimer = window.setInterval(slideTrendNext, 5000);
   }
 }
@@ -478,6 +584,7 @@ function restartTrendTimer() {
 function renderHomeHighlights() {
   if (trendingTrack) {
     const books = popularBooks(5);
+    resetTrendSlide();
     trendingTrack.innerHTML = books.map(renderTrendCard).join("");
     restartTrendTimer();
   }
@@ -513,7 +620,7 @@ function renderHomeHighlights() {
       variant: "upcoming-feature",
       label: "Upcoming book",
       heading: "Next release preview",
-      copy: "This book can be prepared by admin first, then published when the resource is ready.",
+      copy: "A new read is on its way. Save it now and check back when it joins the collection.",
       primaryAction: "View More",
       modalAction: true
     });
@@ -522,8 +629,11 @@ function renderHomeHighlights() {
 
 function renderFilters() {
   const sourceBooks = activeCatalogBooks();
-  const categories = ["All", ...uniqueValues("category")];
-  const formats = ["All", ...uniqueValues("format")];
+  const categories = ["All", ...uniqueValues(sourceBooks, "category")];
+  const formats = ["All", ...uniqueValues(sourceBooks, "format")];
+
+  if (!categories.includes(state.category)) state.category = "All";
+  if (!formats.includes(state.format)) state.format = "All";
 
   categoryButtons.innerHTML = categories.map((category) => {
     const count = category === "All"
@@ -531,7 +641,7 @@ function renderFilters() {
       : sourceBooks.filter((book) => book.category === category).length;
 
     return `
-      <button class="category-button ${state.category === category ? "active" : ""}" type="button" data-category="${escapeAttribute(category)}">
+      <button class="category-button ${state.category === category ? "active" : ""}" type="button" data-category="${escapeAttribute(category)}" aria-pressed="${state.category === category}">
         <span>${escapeHtml(category)}</span>
         <small>${count}</small>
       </button>
@@ -544,21 +654,46 @@ function renderFilters() {
   formatSelect.value = state.format;
 }
 
+function syncCategoryButtons() {
+  categoryButtons.querySelectorAll("[data-category]").forEach((button) => {
+    const active = button.dataset.category === state.category;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
 function renderBooks() {
   const books = matchingBooks();
   const sourceBooks = activeCatalogBooks();
   catalogTitle.textContent = state.search.trim()
     ? `Results for “${state.search.trim()}”`
-    : state.sort === "coming-soon" ? "Coming soon books"
-      : state.sort === "popular" ? "Popular books"
-        : "Available books";
+    : state.category !== "All"
+      ? state.sort === "coming-soon" ? `Coming soon in ${state.category}` : `${state.category} books`
+      : state.sort === "coming-soon" ? "Coming soon books"
+        : state.sort === "popular" ? "Popular books"
+          : "Available books";
   totalCount.textContent = sourceBooks.length;
   visibleCount.textContent = books.length;
   savedCount.textContent = getSavedIds().length;
 
   bookGrid.innerHTML = books.map(renderBookCard).join("");
   emptyState.hidden = books.length > 0;
-  emptyState.textContent = state.sort === "coming-soon" ? "No coming soon books found." : "No books found.";
+  const hasFilters = Boolean(state.search.trim() || state.category !== "All"
+    || state.format !== "All" || state.sort === "coming-soon");
+  emptyState.innerHTML = `<span>${state.sort === "coming-soon"
+    ? "No coming soon books match these filters."
+    : "No books match these filters."}</span>${hasFilters
+    ? ' <button class="catalog-reset-button" type="button" data-reset-catalog-filters>Clear filters</button>'
+    : ""}`;
+
+  const statusParts = [];
+  if (state.category !== "All") statusParts.push(state.category);
+  if (state.format !== "All") statusParts.push(state.format);
+  if (state.sort === "coming-soon") statusParts.push("coming soon");
+  catalogFilterStatus.hidden = !statusParts.length && !filterChangeNote;
+  const filterLabel = statusParts.length ? `${statusParts.join(" ")} ` : "";
+  const statusText = `${books.length} ${filterLabel}${books.length === 1 ? "book" : "books"} shown.${filterChangeNote ? ` ${filterChangeNote}` : ""}`;
+  if (catalogFilterStatus.textContent !== statusText) catalogFilterStatus.textContent = statusText;
 }
 
 function bindEvents() {
@@ -566,6 +701,7 @@ function bindEvents() {
   eventsBound = true;
 
   searchInput.addEventListener("input", (event) => {
+    filterChangeNote = "";
     state.search = event.target.value;
     renderBooks();
     renderSearchSuggestions();
@@ -602,7 +738,10 @@ function bindEvents() {
     const keyword = event.target.closest("[data-search-keyword]");
     if (keyword) {
       applySearch(keyword.dataset.searchKeyword, { resetFilters: true });
-      document.querySelector("#libraryShelf")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector("#libraryShelf")?.scrollIntoView({
+        behavior: reducedMotionQuery?.matches ? "auto" : "smooth",
+        block: "start"
+      });
       return;
     }
 
@@ -613,23 +752,50 @@ function bindEvents() {
     const button = event.target.closest("[data-category]");
     if (!button) return;
 
+    filterChangeNote = "";
     state.category = button.dataset.category;
-    renderFilters();
+    const previousSort = state.sort;
+    clearConflictingCategoryFilters();
+    if (state.sort !== previousSort) {
+      renderFilters();
+      categoryButtons.querySelector(".category-button.active")?.focus({ preventScroll: true });
+    } else {
+      syncCategoryButtons();
+    }
     renderBooks();
+    window.requestAnimationFrame(revealCatalogResults);
   });
 
   formatSelect.addEventListener("change", (event) => {
+    filterChangeNote = "";
     state.format = event.target.value;
     renderBooks();
   });
 
   sortSelect.addEventListener("change", (event) => {
+    filterChangeNote = "";
     state.sort = event.target.value;
     renderFilters();
     renderBooks();
   });
 
   document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-reset-catalog-filters]")) {
+      filterChangeNote = "";
+      state.search = "";
+      state.category = "All";
+      state.format = "All";
+      state.sort = "newest";
+      searchInput.value = "";
+      clearSearchButton.hidden = true;
+      sortSelect.value = state.sort;
+      closeSearchSuggestions();
+      renderFilters();
+      renderBooks();
+      bookGrid.querySelector("[data-view-more-book]")?.focus({ preventScroll: true });
+      return;
+    }
+
     const viewButton = event.target.closest("[data-view-more-book]");
     if (viewButton) {
       openBookModal(viewButton.dataset.viewMoreBook);
@@ -649,12 +815,31 @@ function bindEvents() {
     renderBooks();
     if (activeModalBookId) {
       const activeBook = findBook(activeModalBookId);
-      if (activeBook) renderBookModal(activeBook);
+      if (activeBook) {
+        renderBookModal(activeBook);
+        modalBookContent.querySelector("[data-save-book]")?.focus();
+      }
     }
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeBookModal();
+    if (event.key === "Escape") {
+      closeBookModal();
+      return;
+    }
+    if (event.key !== "Tab" || bookModal?.hidden) return;
+
+    const focusable = [...bookModal.querySelectorAll("button:not([disabled]), a[href]")];
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   });
 
   trendNextButton?.addEventListener("click", () => {
@@ -664,6 +849,25 @@ function bindEvents() {
 
   trendPreviousButton?.addEventListener("click", () => {
     slideTrendPrevious();
+    restartTrendTimer();
+  });
+
+  trendCarousel?.addEventListener("mouseenter", stopTrendTimer);
+  trendCarousel?.addEventListener("mouseleave", restartTrendTimer);
+  trendCarousel?.addEventListener("focusin", stopTrendTimer);
+  trendCarousel?.addEventListener("focusout", (event) => {
+    if (!trendCarousel.contains(event.relatedTarget)) queueMicrotask(restartTrendTimer);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) resetTrendSlide();
+    restartTrendTimer();
+  });
+  window.addEventListener("resize", () => {
+    resetTrendSlide();
+    restartTrendTimer();
+  });
+  reducedMotionQuery?.addEventListener?.("change", () => {
+    resetTrendSlide();
     restartTrendTimer();
   });
 }

@@ -31,7 +31,7 @@ function updateAccountLinks(user) {
   if (!accountLinks.length) return;
 
   accountLinks.forEach((link) => {
-    link.textContent = user ? "Profile" : "Login/Signup";
+    link.textContent = user ? "Profile" : "Sign in";
     link.href = user ? "profile.html" : "login.html";
   });
 }

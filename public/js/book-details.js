@@ -5,6 +5,8 @@ import {
   getCurrentUser,
   isPublicBook,
   listBookReviews,
+  listCachedPublishedBooks,
+  listPublishedBooks,
   recordBookInteraction,
   saveBookReview
 } from "./firebase-service.js";
@@ -27,6 +29,7 @@ const bookId = getQueryParam("id");
 const detailCover = $("#detailCover");
 const detailInitials = $("#detailInitials");
 const detailCategory = $("#detailCategory");
+const detailCoverCategory = $("#detailCoverCategory");
 const detailTitle = $("#detailTitle");
 const detailMeta = $("#detailMeta");
 const detailDescription = $("#detailDescription");
@@ -42,10 +45,17 @@ const downloadResourceButton = $("#downloadResourceButton");
 const bookAccessMessage = $("#bookAccessMessage");
 const resourceReader = $("#resourceReader");
 const resourceFrame = $("#resourceFrame");
+const readerEyebrow = $("#readerEyebrow");
 const readerTitle = $("#readerTitle");
+const readerIntro = $("#readerIntro");
 const readerReadButton = $("#readerReadButton");
 const readerDownloadButton = $("#readerDownloadButton");
+const readerProgress = $("#readerProgress");
+const readerProgressBar = $("#readerProgressBar");
+const readerProgressText = $("#readerProgressText");
 const saveBookButton = $("#saveBookButton");
+const detailRelated = $("#detailRelated");
+const detailRelatedGrid = $("#detailRelatedGrid");
 const bookReviews = $("#bookReviews");
 const reviewSummary = $("#reviewSummary");
 const reviewAuthPrompt = $("#reviewAuthPrompt");
@@ -63,6 +73,8 @@ let readerIdentityResolved = false;
 let currentReviews = [];
 let reviewsLoadedFor = "";
 let trackedOpenFor = "";
+let relatedBooksRequest = null;
+let previewProgressQueued = false;
 
 const demoPreviewSections = {
   "readmaster-study-skills-starter": [
@@ -413,6 +425,7 @@ function setProtectedButton(button, { hidden = false, disabled = false, label })
 function renderAccessActions(book) {
   const access = getBookAccess(book, currentUser);
   const checking = !readerAccessResolved;
+  const authoredPreview = hasAuthoredPreview(book);
   const readLabel = checking
     ? "Checking Access..."
     : access.canRead ? "Read Full Book" : "Sign In to Read";
@@ -448,9 +461,13 @@ function renderAccessActions(book) {
   } else if (access.signedIn) {
     bookAccessMessage.textContent = "You are signed in. Full reading and available PDF downloads are unlocked.";
   } else if (access.hasResource && access.canPreview) {
-    bookAccessMessage.textContent = "You can read the preview now. Sign in or create an account for the full book and downloads.";
+    bookAccessMessage.textContent = authoredPreview
+      ? "You can read the preview now. Sign in or create an account for the full book and downloads."
+      : "You can view the catalog overview now. Sign in or create an account for the full book and downloads.";
   } else if (access.canPreview) {
-    bookAccessMessage.textContent = "A preview is available, but this book does not have a full resource link yet.";
+    bookAccessMessage.textContent = authoredPreview
+      ? "A preview is available, but this book does not have a full resource link yet."
+      : "A catalog overview is available, but this book does not have a full resource link yet.";
   } else {
     bookAccessMessage.textContent = "This book is not available to read yet.";
   }
@@ -599,23 +616,40 @@ function recordDownloadActivity() {
 }
 
 function fallbackPreviewSections(book) {
+  const editionDetails = [
+    book.author && `Author: ${book.author}`,
+    book.format && `Format: ${book.format}`,
+    book.language && `Language: ${book.language}`,
+    book.sourceName && `Source: ${book.sourceName}`,
+    book.licenseType && `License: ${book.licenseType}`
+  ].filter(Boolean);
+
   return [
     {
-      heading: "Sample Reading",
+      heading: "Catalog overview",
       paragraphs: [
-        book.description || "This resource is available as part of the Read_Master catalog.",
-        "Read this short preview first. If the topic is useful, sign in to open the complete resource."
+        book.description || "The library has not added a description for this title.",
+        "This overview comes from the library catalog. It is not an excerpt from the book."
       ]
     },
     {
-      heading: "What To Check",
-      points: [
-        "Does the topic match what you want to learn?",
-        "Is the level comfortable for your current study?",
-        "Will the examples or notes help you after reading?"
-      ]
+      heading: "Edition details",
+      points: editionDetails.length ? editionDetails : ["No additional edition details are listed."]
     }
   ];
+}
+
+function hasAuthoredPreview(book) {
+  return Boolean(book?.id && demoPreviewSections[book.id]);
+}
+
+function updateReaderLabels(book) {
+  const authoredPreview = hasAuthoredPreview(book);
+  readerEyebrow.textContent = authoredPreview ? "A look inside" : "Book overview";
+  readerIntro.textContent = authoredPreview
+    ? "Read a short sample to help you decide what to read next."
+    : "Catalog details only. Open the full resource for the text, when available.";
+  resourceFrame.setAttribute("aria-label", authoredPreview ? "Book preview" : "Book overview");
 }
 
 function previewConclusion(book) {
@@ -645,20 +679,19 @@ function renderSectionBody(section) {
 }
 
 function renderPreviewContent(book) {
-  const previewSections = demoPreviewSections[book.id] || fallbackPreviewSections(book);
-  const sections = [
-    ...previewSections.map((section) => ({
+  const authoredPreview = hasAuthoredPreview(book);
+  const previewSections = authoredPreview ? demoPreviewSections[book.id] : fallbackPreviewSections(book);
+  const sections = previewSections.map((section) => ({
       ...section,
       paragraphs: section.paragraphs || demoPreviewParagraphs[book.id]?.[section.heading] || []
-    })),
-    {
+    }));
+  if (authoredPreview) sections.push({
       heading: "Conclusion",
       paragraphs: [previewConclusion(book)]
-    }
-  ];
+    });
 
   const sectionMarkup = sections.map((section, index) => `
-    <article class="reader-page">
+    <article class="reader-page" id="preview-section-${index + 1}" data-preview-page>
       <span class="reader-page-number">${String(index + 1).padStart(2, "0")}</span>
       <h3>${escapeHtml(section.heading)}</h3>
       ${renderSectionBody(section)}
@@ -666,27 +699,90 @@ function renderPreviewContent(book) {
   `).join("");
 
   return `
-    <div class="reader-pages">
-      ${sectionMarkup}
+    <div class="reader-inner">
+      <nav class="reader-index" aria-label="${authoredPreview ? "Preview sections" : "Overview sections"}">
+        <span class="reader-index-label">${authoredPreview ? "In this preview" : "In this overview"}</span>
+        ${sections.map((section, index) => `
+          <button class="reader-index-button" type="button" data-preview-section="${index}">
+            <span>${String(index + 1).padStart(2, "0")}</span>
+            <span>${escapeHtml(section.heading)}</span>
+          </button>
+        `).join("")}
+      </nav>
+      <div class="reader-pages">
+        ${sectionMarkup}
+      </div>
     </div>
   `;
 }
 
+function updatePreviewProgress() {
+  previewProgressQueued = false;
+  if (resourceReader.hidden) return;
+
+  const pages = [...resourceFrame.querySelectorAll("[data-preview-page]")];
+  if (!pages.length) return;
+
+  const readingLine = Math.max(120, window.innerHeight * 0.38);
+  let activeIndex = 0;
+  pages.forEach((page, index) => {
+    if (page.getBoundingClientRect().top <= readingLine) activeIndex = index;
+  });
+
+  const currentSection = activeIndex + 1;
+  readerProgressBar.max = pages.length;
+  readerProgressBar.value = currentSection;
+  readerProgressBar.textContent = `${currentSection} of ${pages.length}`;
+  readerProgressText.textContent = `Section ${currentSection} of ${pages.length}`;
+  resourceFrame.querySelectorAll("[data-preview-section]").forEach((button, index) => {
+    if (index === activeIndex) button.setAttribute("aria-current", "step");
+    else button.removeAttribute("aria-current");
+  });
+}
+
+function queuePreviewProgress() {
+  if (previewProgressQueued || resourceReader.hidden) return;
+  previewProgressQueued = true;
+  window.requestAnimationFrame(updatePreviewProgress);
+}
+
 function hideReader() {
   resourceReader.hidden = true;
+  readerProgress.hidden = true;
   resourceFrame.innerHTML = "";
 }
 
 function showReader() {
   if (!currentBook || !getBookAccess(currentBook, currentUser).canPreview) return;
 
-  recordReadActivity();
+  if (hasAuthoredPreview(currentBook)) recordReadActivity();
+  updateReaderLabels(currentBook);
   readerTitle.textContent = currentBook.title;
   resourceFrame.innerHTML = renderPreviewContent(currentBook);
   resourceReader.hidden = false;
+  readerProgress.hidden = false;
   renderAccessActions(currentBook);
-  resourceReader.scrollIntoView({ behavior: "smooth", block: "start" });
+  resourceFrame.focus({ preventScroll: true });
+  resourceReader.scrollIntoView({
+    behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth",
+    block: "start"
+  });
+  queuePreviewProgress();
 }
+
+resourceFrame.addEventListener("click", (event) => {
+  const button = event.target instanceof Element ? event.target.closest("[data-preview-section]") : null;
+  if (!button || !resourceFrame.contains(button)) return;
+  const index = Number(button.dataset.previewSection);
+  const target = resourceFrame.querySelectorAll("[data-preview-page]")[index];
+  target?.scrollIntoView({
+    behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth",
+    block: "start"
+  });
+});
+
+window.addEventListener("scroll", queuePreviewProgress, { passive: true });
+window.addEventListener("resize", queuePreviewProgress, { passive: true });
 
 function openResourceInNewTab() {
   if (!currentBook || !getBookAccess(currentBook, currentUser).canRead) return;
@@ -735,7 +831,49 @@ function handleProtectedResourceAction(action) {
   }
 }
 
+function renderRelatedBooks(book, books) {
+  if (!detailRelated || !detailRelatedGrid || currentBook?.id !== book.id) return;
+
+  const matches = books
+    .filter((item) => item.id !== book.id && item.status === "published" && isPublicBook(item))
+    .map((item, index) => ({
+      item,
+      index,
+      relevance: Number(item.category === book.category) * 2 + Number(item.author === book.author)
+    }))
+    .sort((a, b) => b.relevance - a.relevance || a.index - b.index)
+    .slice(0, 3);
+
+  detailRelated.hidden = matches.length === 0;
+  detailRelatedGrid.innerHTML = matches.map(({ item }) => `
+    <a class="detail-related-card" href="book-details.html?id=${encodeURIComponent(item.id)}">
+      <span class="detail-related-cover" style="--related-cover-bg: ${categoryTone(item.category)}">
+        ${item.coverUrl
+          ? `<img src="${escapeAttribute(item.coverUrl)}" alt="" loading="lazy">`
+          : `<span class="detail-related-initials">${escapeHtml(initialsFromTitle(item.title))}</span>`}
+      </span>
+      <span class="detail-related-copy">
+        <span class="detail-related-category">${escapeHtml(item.category || "Book")}</span>
+        <strong>${escapeHtml(item.title)}</strong>
+        <span class="detail-related-author">${escapeHtml(item.author || "")}</span>
+        <span class="detail-related-open">View book <span aria-hidden="true">↗</span></span>
+      </span>
+    </a>
+  `).join("");
+}
+
+function loadRelatedBooks(book) {
+  renderRelatedBooks(book, listCachedPublishedBooks());
+  relatedBooksRequest ||= listPublishedBooks()
+    .catch((error) => {
+      console.warn("Related books could not load.", error);
+      return [];
+    });
+  relatedBooksRequest.then((books) => renderRelatedBooks(book, books));
+}
+
 function renderBook(book) {
+  const keepPreviewOpen = currentBook?.id === book.id && !resourceReader.hidden;
   currentBook = book;
   document.title = `${book.title} | Read_Master Library`;
   if (bookAccessMessage) bookAccessMessage.hidden = false;
@@ -746,6 +884,7 @@ function renderBook(book) {
     : `<span class="cover-initials" id="detailInitials">${escapeHtml(initialsFromTitle(book.title))}</span>`;
 
   detailCategory.textContent = book.category;
+  detailCoverCategory.textContent = book.category || "Selected book";
   detailTitle.textContent = book.title;
   detailMeta.textContent = `${book.author}${book.sourceName ? ` - ${book.sourceName}` : ""}`;
   detailDescription.textContent = book.description;
@@ -758,12 +897,17 @@ function renderBook(book) {
 
   const access = getBookAccess(book, currentUser);
 
-  hideReader();
+  if (!keepPreviewOpen || !access.canPreview) hideReader();
+  else {
+    updateReaderLabels(book);
+    readerTitle.textContent = book.title;
+    queuePreviewProgress();
+  }
 
   if (access.canPreview) {
     previewResourceButton.hidden = false;
     previewResourceButton.disabled = false;
-    previewResourceButton.textContent = "Read Preview";
+    previewResourceButton.textContent = hasAuthoredPreview(book) ? "Read Preview" : "View Book Overview";
   } else {
     previewResourceButton.hidden = false;
     previewResourceButton.disabled = true;
@@ -776,11 +920,13 @@ function renderBook(book) {
   loadReviewsForBook(book);
   renderReviewComposer();
   trackBookOpenIfReady();
+  loadRelatedBooks(book);
 }
 
 function renderMissing(message) {
   detailInitials.textContent = "NA";
   detailCategory.textContent = "Not found";
+  detailCoverCategory.textContent = "Not found";
   detailTitle.textContent = message;
   detailMeta.textContent = "";
   detailDescription.textContent = "Return to the library and select another resource.";
@@ -790,6 +936,7 @@ function renderMissing(message) {
   if (bookAccessMessage) bookAccessMessage.hidden = true;
   saveBookButton.hidden = true;
   if (bookReviews) bookReviews.hidden = true;
+  if (detailRelated) detailRelated.hidden = true;
   hideReader();
 }
 
