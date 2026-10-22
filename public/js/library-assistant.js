@@ -244,6 +244,23 @@ function publicBookSummary(book) {
   };
 }
 
+function booksMentionedInAnswer(answer, books) {
+  const normalizedAnswer = ` ${normalizedText(answer)} `;
+
+  return mergeCatalogBooks(books)
+    .map((book) => ({
+      book,
+      title: normalizedText(book.title)
+    }))
+    .map(({ book, title }) => ({
+      book,
+      position: title.length >= 5 ? normalizedAnswer.indexOf(` ${title} `) : -1
+    }))
+    .filter(({ position }) => position >= 0)
+    .sort((a, b) => a.position - b.position)
+    .map(({ book }) => publicBookSummary(book));
+}
+
 function rankedLibraryBooks(question, books, options = {}) {
   const requestedLimit = Number.parseInt(options.limit, 10);
   const limit = Math.min(
@@ -797,10 +814,16 @@ export function initLibraryAssistant(options = {}) {
           const { askGemini } = await import("./firebase-ai-assistant.js");
           const prompt = buildLibraryAiPrompt(cleanedQuestion, books, { ...context, conversation });
           const answer = await askGemini(prompt);
+          const linkedBooks = [
+            ...booksMentionedInAnswer(answer, books),
+            ...(localReply.intent === "topic" ? localReply.books : [])
+          ].filter((book, index, candidates) => {
+            return candidates.findIndex((candidate) => candidate.id === book.id) === index;
+          }).slice(0, maximumRecommendations);
           reply = {
             intent: "ai",
             message: answer,
-            books: localReply.intent === "topic" ? localReply.books : [],
+            books: linkedBooks,
             action: null
           };
         } catch (error) {
