@@ -2725,7 +2725,7 @@ textarea:focus {
   outline-offset: 2px;
 }
 
-/* Local library assistant */
+/* Library assistant */
 .library-assistant {
   position: fixed;
   z-index: 50;

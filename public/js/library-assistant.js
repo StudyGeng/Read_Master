@@ -4,6 +4,7 @@ import {
   listPublishedBooks,
   listUpcomingBooks
 } from "./firebase-service.js";
+import { buildLibraryAiPrompt } from "./library-ai-prompt.js";
 
 const assistantRootId = "libraryAssistant";
 const maximumQuestionLength = 240;
@@ -409,7 +410,7 @@ export function getLibraryAssistantReply(question, books = [], context = {}) {
   if (!cleanedQuestion) {
     return {
       intent: "welcome",
-      message: "I search this library only. Ask me for a topic, popular books, newest books, upcoming books, or help using a library feature.",
+      message: "Ask me about books or reading. I use Gemini for answers when available, and every book link comes from this library's public catalog.",
       books: [],
       action: null
     };
@@ -625,7 +626,7 @@ function pageContext() {
 }
 
 /**
- * Adds the accessible, local-only Library Assistant to a reader-facing page.
+ * Adds the accessible Library Assistant to a reader-facing page.
  */
 export function initLibraryAssistant(options = {}) {
   if (typeof document === "undefined" || !document.body) return null;
@@ -736,6 +737,7 @@ export function initLibraryAssistant(options = {}) {
 
   let lastFocusedElement = null;
   let answering = false;
+  const conversation = [];
 
   function setBusy(busy, message = "") {
     answering = busy;
@@ -784,7 +786,37 @@ export function initLibraryAssistant(options = {}) {
 
     try {
       const books = await loadAssistantCatalog();
-      const reply = getLibraryAssistantReply(cleanedQuestion, books, pageContext());
+      const context = pageContext();
+      const localReply = getLibraryAssistantReply(cleanedQuestion, books, context);
+      let reply = localReply;
+
+      if (!["popular", "newest", "upcoming", "current-book"].includes(localReply.intent)
+        && !localReply.intent.startsWith("feature-")) {
+        setBusy(true, "Thinking with Gemini…");
+        try {
+          const { askGemini } = await import("./firebase-ai-assistant.js");
+          const prompt = buildLibraryAiPrompt(cleanedQuestion, books, { ...context, conversation });
+          const answer = await askGemini(prompt);
+          reply = {
+            intent: "ai",
+            message: answer,
+            books: localReply.intent === "topic" ? localReply.books : [],
+            action: null
+          };
+        } catch (error) {
+          console.warn("Gemini is unavailable; using catalog results.", error);
+          reply = {
+            ...localReply,
+            message: `Live AI is unavailable right now. ${localReply.message}`
+          };
+        }
+      }
+
+      conversation.push(
+        { role: "user", text: cleanedQuestion },
+        { role: "assistant", text: reply.message }
+      );
+      if (conversation.length > 6) conversation.splice(0, conversation.length - 6);
       appendAssistantReply(messages, reply);
       return reply;
     } catch (error) {

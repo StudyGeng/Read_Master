@@ -1,4 +1,9 @@
-import { firebaseCollections, firebaseConfig, hasFirebaseConfig } from "./firebase-config.js";
+import {
+  firebaseCollections,
+  firebaseConfig,
+  hasFirebaseConfig,
+  recaptchaEnterpriseSiteKey
+} from "./firebase-config.js";
 import {
   clearLocalLibraryActivity,
   getLocalLibraryActivity,
@@ -12,7 +17,7 @@ import {
 } from "./reading-store.js";
 import { sampleBooks } from "./sample-data.js";
 
-const firebaseSdkVersion = "10.12.5";
+const firebaseSdkVersion = "13.1.0";
 const booksKey = "readmaster:books";
 const usersKey = "readmaster:users";
 const reviewsKey = "readmaster:book-reviews:v1";
@@ -75,17 +80,37 @@ async function getFirebase() {
   if (!configured) return null;
 
   if (!firebasePromise) {
+    const appCheckImport = import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-app-check.js`)
+      .then((module) => ({ module, error: null }), (error) => ({ module: null, error }));
+
     firebasePromise = Promise.all([
       import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-app.js`),
       import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-firestore.js`),
-      import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-auth.js`)
-    ]).then(([appModule, firestoreModule, authModule]) => {
+      import(`https://www.gstatic.com/firebasejs/${firebaseSdkVersion}/firebase-auth.js`),
+      appCheckImport
+    ]).then(([appModule, firestoreModule, authModule, appCheckImportResult]) => {
       const app = appModule.getApps().length
         ? appModule.getApp()
         : appModule.initializeApp(firebaseConfig);
 
+      let appCheck = null;
+      let appCheckError = appCheckImportResult.error;
+      if (appCheckImportResult.module && recaptchaEnterpriseSiteKey) {
+        try {
+          appCheck = appCheckImportResult.module.initializeAppCheck(app, {
+            provider: new appCheckImportResult.module.ReCaptchaEnterpriseProvider(recaptchaEnterpriseSiteKey),
+            isTokenAutoRefreshEnabled: true
+          });
+        } catch (error) {
+          appCheckError = error;
+          console.warn("Firebase App Check could not initialize; AI answers are unavailable.", error);
+        }
+      }
+
       return {
         app,
+        appCheck,
+        appCheckError,
         db: firestoreModule.getFirestore(app),
         auth: authModule.getAuth(app),
         appModule,
@@ -96,6 +121,14 @@ async function getFirebase() {
   }
 
   return firebasePromise;
+}
+
+export async function getFirebaseAIContext() {
+  const firebase = await getFirebase();
+  if (!firebase?.appCheck) {
+    throw firebase?.appCheckError || new Error("Firebase App Check is unavailable.");
+  }
+  return { app: firebase.app, sdkVersion: firebaseSdkVersion };
 }
 
 function getFirebaseForRead(label) {

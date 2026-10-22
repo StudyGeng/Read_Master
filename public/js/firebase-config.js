@@ -8,6 +8,9 @@ export const firebaseConfig = {
   measurementId: "G-3XBPRLF3WZ"
 };
 
+// Public reCAPTCHA Enterprise site key. This is safe to include in client code.
+export const recaptchaEnterpriseSiteKey = "6LehxfotAAAAABkuGiiq93M3_tLGxTiZ-lJJlpJe";
+
 export const firebaseCollections = {
   admins: "admins",
   books: "books",

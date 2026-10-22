@@ -47,6 +47,7 @@ const readingStore = await import("../public/js/reading-store.js");
 const libraryStore = await import("../public/js/library-store.js");
 const bookAccess = await import("../public/js/book-access.js");
 const libraryAssistant = await import("../public/js/library-assistant.js");
+const libraryAiPrompt = await import("../public/js/library-ai-prompt.js");
 
 const cachedPublishedBooks = service.listCachedPublishedBooks();
 assert(cachedPublishedBooks.length >= 10, "Expected cached demo books to load instantly.");
@@ -113,6 +114,15 @@ assert(
   libraryAssistant.getLibraryAssistantReply("How do reviews work?", publishedBooks).intent === "feature-reviews",
   "Expected the Library Assistant to explain review features."
 );
+
+const aiPrompt = libraryAiPrompt.buildLibraryAiPrompt("What is this book about?", [
+  { ...pdfBook, privateNote: "PRIVATE_ACCOUNT_TOKEN" },
+  { id: "hidden-draft", title: "Hidden Draft", status: "draft" }
+], { bookId: pdfBook.id });
+assert(aiPrompt.includes(pdfBook.title), "Expected the AI prompt to include public catalog details.");
+assert(!aiPrompt.includes(pdfBook.resourceUrl), "Expected the AI prompt to omit full resource URLs.");
+assert(!aiPrompt.includes("PRIVATE_ACCOUNT_TOKEN"), "Expected the AI prompt to omit private book fields.");
+assert(!aiPrompt.includes("Hidden Draft"), "Expected the AI prompt to exclude unpublished books.");
 
 const upcomingBooks = await service.listUpcomingBooks();
 assert(upcomingBooks.length >= 1, "Expected upcoming demo books to load.");

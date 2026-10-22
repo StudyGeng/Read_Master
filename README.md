@@ -88,7 +88,7 @@ After Firebase displays `Deploy complete!`, the website remains available at `ht
 
 Book reviews and community features require the included Firestore and Storage rules to be deployed; a hosting-only deploy does not update permissions. The reviewed book must also exist as a real public document in Firestore. Sample books shown by the browser cache are not enough: sign in as an administrator and use **Load Demo Books**, or add/publish licensed books through the dashboard.
 
-The Library Assistant is a local, catalog-based helper, not an external generative-AI service. It recommends public books and explains site features without sending chat content to a third-party model or requiring an API key.
+The Library Assistant uses Firebase AI Logic with Gemini 3.5 Flash-Lite for open-ended book and reading questions. It sends the question, recent chat messages, and a limited set of public catalog fields to the model; account data and full book files are not included. Book links and site-feature guidance come from the local catalog, and the assistant falls back to catalog search when live AI is unavailable. Firebase App Check uses the public reCAPTCHA Enterprise site key in `public/js/firebase-config.js`. The Firebase project must have the Gemini Developer API enabled in AI Logic and the web app registered with App Check. Gemini and Fraud Defense have usage limits; check the project's billing plan and current pricing before relying on a no-cost allowance.
 
 ## Administrator Security
 
@@ -107,4 +107,4 @@ These client-written counters are useful for this small demonstration, but they 
 
 ## Project Scope
 
-Read_Master demonstrates the core functions of a digital library, including account access, catalogue management, popular and recently added books, reviews, favorites, reading history, My Library, opt-in community profiles, administrator notifications, a catalog assistant, and administrator controls. It can be extended in the future with features such as borrowing records, generative-AI recommendations, trusted server-side analytics, and additional reporting.
+Read_Master demonstrates the core functions of a digital library, including account access, catalogue management, popular and recently added books, reviews, favorites, reading history, My Library, opt-in community profiles, administrator notifications, an AI-assisted catalog helper, and administrator controls. It can be extended in the future with features such as borrowing records, trusted server-side analytics, and additional reporting.
